@@ -2,22 +2,22 @@ import SwiftUI
 
 // MARK: - iOS-inspired Color Scheme
 extension Color {
-    // System Colors
-    static let systemBlue = Color(hex: "007AFF")
-    static let systemBlueDark = Color(hex: "0A84FF")
-    static let systemGray = Color(hex: "8E8E93")
-    static let systemGray2 = Color(hex: "AEAEB2")
-    static let systemGray3 = Color(hex: "C7C7CC")
-    static let systemGray4 = Color(hex: "D1D1D6")
-    static let systemGray5 = Color(hex: "E5E5EA")
-    static let systemGray6 = Color(hex: "F2F2F7")
-    static let systemRed = Color(hex: "FF3B30")
-    static let systemGreen = Color(hex: "34C759")
-    static let systemOrange = Color(hex: "FF9500")
+    // System Colors (iOS style)
+    static let systemBlue = Color(red: 0/255, green: 122/255, blue: 255/255)
+    static let systemBlueDark = Color(red: 10/255, green: 132/255, blue: 255/255)
+    static let systemGray = Color(red: 142/255, green: 142/255, blue: 147/255)
+    static let systemGray2 = Color(red: 174/255, green: 174/255, blue: 178/255)
+    static let systemGray3 = Color(red: 199/255, green: 199/255, blue: 204/255)
+    static let systemGray4 = Color(red: 209/255, green: 209/255, blue: 214/255)
+    static let systemGray5 = Color(red: 229/255, green: 229/255, blue: 234/255)
+    static let systemGray6 = Color(red: 242/255, green: 242/255, blue: 247/255)
+    static let systemRed = Color(red: 255/255, green: 59/255, blue: 48/255)
+    static let systemGreen = Color(red: 52/255, green: 199/255, blue: 89/255)
+    static let systemOrange = Color(red: 255/255, green: 149/255, blue: 0/255)
 
     // Card Backgrounds
-    static let cardBackgroundLight = Color(hex: "F2F4F5")
-    static let cardBackgroundDark = Color(hex: "2A2A2C")
+    static let cardBackgroundLight = Color(red: 242/255, green: 244/255, blue: 245/255)
+    static let cardBackgroundDark = Color(red: 42/255, green: 42/255, blue: 44/255)
 
     // Convenience initializer for hex colors
     init(hex: String) {
