@@ -115,7 +115,7 @@ struct DishShape: Shape {
             to: CGPoint(x: width * 0.15, y: height),
             control: CGPoint(x: width / 2, y: height * 0.6)
         )
-        path.close()
+        path.closeSubpath()
 
         return path
     }
@@ -180,7 +180,7 @@ struct StarShape: Shape {
             }
             path.addLine(to: innerPoint)
         }
-        path.close()
+        path.closeSubpath()
 
         return path
     }
