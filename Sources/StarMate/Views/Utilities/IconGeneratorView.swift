@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreGraphics
 
 /// A SwiftUI view that renders the StarMate app icon
 /// Use this to generate the app icon by taking a screenshot in the simulator
@@ -144,10 +145,11 @@ struct SignalWave: Shape {
         return path
     }
 
-    var animatableData: AnimatablePair<AnimatablePair<CGPoint, CGPoint>, Double> {
-        get { AnimatablePair(AnimatablePair(start, end), opacity) }
-        set { }
-    }
+    // Note: CGPoint doesn't conform to VectorArithmetic, so we use a simpler approach
+    // var animatableData: Double {
+    //     get { opacity }
+    //     set { opacity = newValue }
+    // }
 }
 
 // MARK: - Star Shape
