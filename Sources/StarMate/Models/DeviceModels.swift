@@ -23,19 +23,24 @@ struct ScannedDevice: Identifiable, Equatable {
     let rssi: Int
 
     var signalIcon: String {
-        switch rssi {
-        case -50...: return "antenna.radiowaves.left.and.right"
-        case -65...(-50): return "antenna.radiowaves.left.and.right"
-        case -80...(-65): return "antenna.radiowaves.left.and.right"
-        default: return "antenna.radiowaves.left.and.right.slash"
+        if rssi >= -50 {
+            return "antenna.radiowaves.left.and.right"
+        } else if rssi >= -65 {
+            return "antenna.radiowaves.left.and.right"
+        } else if rssi >= -80 {
+            return "antenna.radiowaves.left.and.right"
+        } else {
+            return "antenna.radiowaves.left.and.right.slash"
         }
     }
 
     var signalColor: Color {
-        switch rssi {
-        case -60...: return .systemBlue
-        case -75...(-60): return .systemOrange
-        default: return .systemRed
+        if rssi >= -60 {
+            return .systemBlue
+        } else if rssi >= -75 {
+            return .systemOrange
+        } else {
+            return .systemRed
         }
     }
 }
