@@ -184,7 +184,7 @@ struct ChatDetailView: View {
                     .padding()
                 }
                 .background(Color.systemGray6)
-                .onChange(of: messages.count) { _ in
+                .onChange(of: messages.count) { oldValue, newValue in
                     if let lastMessage = messages.last {
                         withAnimation {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)
