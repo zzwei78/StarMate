@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - BLE Connection State
 enum ConnectionState: Equatable {
