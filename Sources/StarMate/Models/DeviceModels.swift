@@ -110,6 +110,20 @@ enum TtModuleState: Equatable {
     case poweredOff
     case error(errorCode: Int)
 
+    init(rawValue: Int) {
+        switch rawValue {
+        case 0: self = .hardwareFault
+        case 1: self = .initializing
+        case 2: self = .waitingMuxResp
+        case 3: self = .lowBatteryOff
+        case 4: self = .userOff
+        case 5: self = .working
+        case 6: self = .updating
+        case 7: self = .poweredOff
+        default: self = .error(errorCode: rawValue)
+        }
+    }
+
     var displayText: String {
         switch self {
         case .hardwareFault: return "硬件异常"
@@ -141,6 +155,20 @@ enum SimState: Equatable {
     case phSimPinRequired
     case error
     case unknown
+
+    init(rawValue: Int) {
+        switch rawValue {
+        case 0: self = .absent
+        case 1: self = .ready
+        case 2: self = .simPinRequired
+        case 3: self = .simPukRequired
+        case 4: self = .simPin2Required
+        case 5: self = .simPuk2Required
+        case 6: self = .phSimPinRequired
+        case 7: self = .error
+        default: self = .unknown
+        }
+    }
 
     var displayText: String {
         switch self {

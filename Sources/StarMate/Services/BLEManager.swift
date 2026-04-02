@@ -40,6 +40,9 @@ class BLEManager: NSObject, ObservableObject {
     // Store discovered peripherals for later connection
     private var discoveredPeripherals: [String: CBPeripheral] = [:]
 
+    // Discovered characteristics
+    private var characteristics: [String: CBCharacteristic] = [:]
+
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -198,32 +201,171 @@ class BLEManager: NSObject, ObservableObject {
     // MARK: - Private Methods
 
     private func loadDeviceInfo() {
-        // Simulate loading device info
-        deviceInfo = DeviceInfo(
-            name: "TTCat",
-            address: "AA:BB:CC:DD:EE:FF",
-            batteryLevel: 85,
-            currentMa: 450,
-            voltageMv: 3800,
-            signalStrength: 4,
-            isRegistered: true,
-            regStatus: 1,
-            satelliteMode: .normal,
-            workMode: .idle
-        )
+        // Request real device info via Bluetooth
+        requestDeviceInfo()
+        requestBatteryStatus()
+        requestSignalStatus()
+        requestModuleStatus()
+        requestNetworkStatus()
+    }
 
-        terminalVersion = TerminalVersion(
-            hardwareVersion: "v1.2",
-            softwareVersion: "v2.0.1",
-            firmwareVersion: "v1.0.5",
-            manufacturer: "TTCat",
-            modelNumber: "TC-100"
-        )
+    private func requestDeviceInfo() {
+        guard let peripheral = connectedPeripheral,
+              let characteristic = characteristics[BluetoothService.Characteristic.deviceInfo.uuidString] else {
+            print("Device info characteristic not found")
+            return
+        }
+        peripheral.readValue(for: characteristic)
+    }
 
-        ttModuleState = .working
-        simState = .ready
-        networkRegistrationStatus = .registered(isRoaming: false)
-        signalCsqRaw = 20
+    private func requestBatteryStatus() {
+        guard let peripheral = connectedPeripheral,
+              let characteristic = characteristics[BluetoothService.Characteristic.batteryStatus.uuidString] else {
+            print("Battery status characteristic not found")
+            return
+        }
+        peripheral.readValue(for: characteristic)
+    }
+
+    private func requestSignalStatus() {
+        guard let peripheral = connectedPeripheral,
+              let characteristic = characteristics[BluetoothService.Characteristic.signalStatus.uuidString] else {
+            print("Signal status characteristic not found")
+            return
+        }
+        peripheral.readValue(for: characteristic)
+    }
+
+    private func requestModuleStatus() {
+        guard let peripheral = connectedPeripheral,
+              let characteristic = characteristics[BluetoothService.Characteristic.moduleStatus.uuidString] else {
+            print("Module status characteristic not found")
+            return
+        }
+        peripheral.readValue(for: characteristic)
+    }
+
+    private func requestNetworkStatus() {
+        guard let peripheral = connectedPeripheral,
+              let characteristic = characteristics[BluetoothService.Characteristic.networkStatus.uuidString] else {
+            print("Network status characteristic not found")
+            return
+        }
+        peripheral.readValue(for: characteristic)
+    }
+
+    private func parseDeviceInfoData(_ data: Data) {
+        // Parse device info data based on your device protocol
+        // This is a sample implementation - adjust according to actual protocol
+        guard data.count >= 6 else { return }
+
+        let batteryLevel = Int(data[0])
+        let voltageMv = Int(data[1]) * 100 + Int(data[2]) * 10
+        let currentMa = Int(data[3]) * 100 + Int(data[4])
+        let signalStrength = Int(data[5])
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            self.deviceInfo = DeviceInfo(
+                name: self.connectedPeripheral?.name ?? "TTCat",
+                address: self.connectedPeripheral?.identifier.uuidString ?? "",
+                batteryLevel: batteryLevel,
+                currentMa: currentMa,
+                voltageMv: voltageMv,
+                signalStrength: min(signalStrength, 5),
+                isRegistered: self.networkRegistrationStatus != .notRegistered,
+                regStatus: self.getRegStatusValue(),
+                satelliteMode: .normal,
+                workMode: .idle
+            )
+        }
+    }
+
+    private func parseBatteryData(_ data: Data) {
+        // Parse battery status data
+        guard data.count >= 3 else { return }
+
+        let level = Int(data[0])
+        let voltage = Int(data[1]) << 8 | Int(data[2])
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, var info = self.deviceInfo else { return }
+            info.batteryLevel = level
+            info.voltageMv = voltage
+            self.deviceInfo = info
+        }
+    }
+
+    private func parseSignalData(_ data: Data) {
+        // Parse signal status data
+        guard data.count >= 2 else { return }
+
+        let csq = Int(data[0])
+        let strength = Int(data[1])
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.signalCsqRaw = csq
+            if var info = self.deviceInfo {
+                info.signalStrength = min(strength, 5)
+                self.deviceInfo = info
+            }
+        }
+    }
+
+    private func parseModuleData(_ data: Data) {
+        // Parse module status data
+        guard data.count >= 2 else { return }
+
+        let stateValue = Int(data[0])
+        let simValue = Int(data[1])
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.ttModuleState = TtModuleState(rawValue: stateValue) ?? .initializing
+            self.simState = SimState(rawValue: simValue) ?? .unknown
+        }
+    }
+
+    private func parseNetworkData(_ data: Data) {
+        // Parse network status data
+        guard data.count >= 1 else { return }
+
+        let statusValue = Int(data[0])
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            switch statusValue {
+            case 0:
+                self.networkRegistrationStatus = .notRegistered
+            case 1:
+                self.networkRegistrationStatus = .registered(isRoaming: false)
+            case 2:
+                self.networkRegistrationStatus = .searching
+            case 3:
+                self.networkRegistrationStatus = .registrationDenied
+            case 5:
+                self.networkRegistrationStatus = .registered(isRoaming: true)
+            default:
+                self.networkRegistrationStatus = .unknown
+            }
+
+            if var info = self.deviceInfo {
+                info.regStatus = statusValue
+                self.deviceInfo = info
+            }
+        }
+    }
+
+    private func getRegStatusValue() -> Int {
+        switch networkRegistrationStatus {
+        case .notRegistered: return 0
+        case .registered: return 1
+        case .searching: return 2
+        case .registrationDenied: return 3
+        case .unknown: return 4
+        }
     }
 
     func clearError() {
@@ -297,11 +439,13 @@ extension BLEManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
             print("Error discovering services: \(error.localizedDescription)")
+            connectionState = .error(message: "发现服务失败")
             return
         }
 
         // Discover characteristics for all services
         peripheral.services?.forEach { service in
+            print("Discovered service: \(service.uuid)")
             peripheral.discoverCharacteristics(nil, for: service)
         }
     }
@@ -312,9 +456,22 @@ extension BLEManager: CBPeripheralDelegate {
             return
         }
 
-        // You can now interact with characteristics
-        // Implement your specific communication logic here
-        print("Discovered characteristics for service: \(service.uuid)")
+        guard let characteristics = service.characteristics else { return }
+
+        for characteristic in characteristics {
+            // Store characteristic reference
+            characteristics[characteristic.uuidString] = characteristic
+
+            print("Discovered characteristic: \(characteristic.uuid)")
+
+            // Enable notification for status characteristics
+            if characteristic.uuid == BluetoothService.Characteristic.batteryStatus ||
+               characteristic.uuid == BluetoothService.Characteristic.signalStatus ||
+               characteristic.uuid == BluetoothService.Characteristic.moduleStatus ||
+               characteristic.uuid == BluetoothService.Characteristic.networkStatus {
+                peripheral.setNotifyValue(true, for: characteristic)
+            }
+        }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -323,7 +480,42 @@ extension BLEManager: CBPeripheralDelegate {
             return
         }
 
-        // Handle incoming data from device
-        print("Received data from characteristic: \(characteristic.uuid)")
+        guard let data = characteristic.value else {
+            print("No data received from characteristic: \(characteristic.uuid)")
+            return
+        }
+
+        print("Received data from \(characteristic.uuid): \(data as NSData)")
+
+        // Parse data based on characteristic type
+        if characteristic.uuid == BluetoothService.Characteristic.deviceInfo {
+            parseDeviceInfoData(data)
+        } else if characteristic.uuid == BluetoothService.Characteristic.batteryStatus {
+            parseBatteryData(data)
+        } else if characteristic.uuid == BluetoothService.Characteristic.signalStatus {
+            parseSignalData(data)
+        } else if characteristic.uuid == BluetoothService.Characteristic.moduleStatus {
+            parseModuleData(data)
+        } else if characteristic.uuid == BluetoothService.Characteristic.networkStatus {
+            parseNetworkData(data)
+        }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+            print("Error writing value: \(error.localizedDescription)")
+            return
+        }
+
+        print("Successfully wrote to characteristic: \(characteristic.uuid)")
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+            print("Error updating notification state: \(error.localizedDescription)")
+            return
+        }
+
+        print("Notification state updated for \(characteristic.uuid): \(characteristic.isNotifying)")
     }
 }
