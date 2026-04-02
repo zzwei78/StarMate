@@ -24,7 +24,13 @@ struct HomeView: View {
                     ConnectionStatusCard(
                         connectionState: bleManager.connectionState,
                         onConnect: { showScanDialog = true },
-                        onDisconnect: { bleManager.disconnect() }
+                        onDisconnect: {
+                            if bleManager.isScanning {
+                                bleManager.stopScan()
+                            } else {
+                                bleManager.disconnect()
+                            }
+                        }
                     )
 
                     // Device Info Card
@@ -134,9 +140,19 @@ struct ConnectionStatusCard: View {
                 }
                 .buttonStyle(.bordered)
 
-            case .connecting, .scanning:
+            case .connecting:
                 ProgressView()
                     .frame(maxWidth: .infinity)
+
+            case .scanning:
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    ProgressView()
+                    Button(action: onDisconnect) {
+                        Text("停止搜索")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
 
             default:
                 Button(action: onConnect) {

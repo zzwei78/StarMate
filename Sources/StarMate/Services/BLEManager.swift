@@ -37,6 +37,9 @@ class BLEManager: NSObject, ObservableObject {
     private var connectedPeripheral: CBPeripheral?
     private var scanTimeoutTimer: Timer?
 
+    // Store discovered peripherals for later connection
+    private var discoveredPeripherals: [String: CBPeripheral] = [:]
+
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
@@ -68,21 +71,36 @@ class BLEManager: NSObject, ObservableObject {
         isScanning = false
         scanTimeoutTimer?.invalidate()
         scanTimeoutTimer = nil
+
+        // Reset connection state if we were scanning
+        if case .scanning = connectionState {
+            connectionState = .disconnected
+        }
     }
 
     func connect(to device: ScannedDevice) {
         stopScan()
         connectionState = .connecting(address: device.address)
 
-        // In real implementation, find and connect to the peripheral
-        // For demo, simulate connection after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.connectionState = .connected(device: device)
-            self?.loadDeviceInfo()
+        // Find the peripheral from discovered devices
+        guard let peripheral = discoveredPeripherals[device.address] else {
+            connectionState = .error(message: "设备未找到，请重新扫描")
+            return
         }
+
+        // Set peripheral delegate before connecting
+        peripheral.delegate = self
+
+        // Connect to the peripheral
+        centralManager?.connect(peripheral, options: nil)
     }
 
     func disconnect() {
+        // Stop scanning if active
+        if isScanning {
+            stopScan()
+        }
+
         if let peripheral = connectedPeripheral {
             centralManager?.cancelPeripheralConnection(peripheral)
         }
@@ -232,6 +250,9 @@ extension BLEManager: CBCentralManagerDelegate {
         let name = peripheral.name ?? "Unknown Device"
         let address = peripheral.identifier.uuidString
 
+        // Store peripheral for later connection
+        discoveredPeripherals[address] = peripheral
+
         let device = ScannedDevice(name: name, address: address, rssi: RSSI.intValue)
 
         // Only add TTCat devices
@@ -244,7 +265,21 @@ extension BLEManager: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         connectedPeripheral = peripheral
+
+        // Create device from connected peripheral
+        let device = ScannedDevice(
+            name: peripheral.name ?? "TTCat",
+            address: peripheral.identifier.uuidString,
+            rssi: 0
+        )
+
+        connectionState = .connected(device: device)
+
+        // Discover services and characteristics
         peripheral.discoverServices(nil)
+
+        // Load device info
+        loadDeviceInfo()
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -254,5 +289,41 @@ extension BLEManager: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         connectionState = .error(message: "连接失败: \(error?.localizedDescription ?? "未知错误")")
+    }
+}
+
+// MARK: - CBPeripheralDelegate
+extension BLEManager: CBPeripheralDelegate {
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+        if let error = error {
+            print("Error discovering services: \(error.localizedDescription)")
+            return
+        }
+
+        // Discover characteristics for all services
+        peripheral.services?.forEach { service in
+            peripheral.discoverCharacteristics(nil, for: service)
+        }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+        if let error = error {
+            print("Error discovering characteristics: \(error.localizedDescription)")
+            return
+        }
+
+        // You can now interact with characteristics
+        // Implement your specific communication logic here
+        print("Discovered characteristics for service: \(service.uuid)")
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+            print("Error updating value: \(error.localizedDescription)")
+            return
+        }
+
+        // Handle incoming data from device
+        print("Received data from characteristic: \(characteristic.uuid)")
     }
 }
