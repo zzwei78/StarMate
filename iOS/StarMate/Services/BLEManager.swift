@@ -598,9 +598,10 @@ extension BLEManager: CBPeripheralDelegate {
             return
         }
 
-        guard let services = peripheral.services else { return }
-
-        for service in services {
+        // Debug: Print all discovered services
+        print("🔍 Discovered services:")
+        peripheral.services?.forEach { service in
+            print("  Service: \(service.uuid.uuidString)")
             peripheral.discoverCharacteristics(nil, for: service)
         }
     }
@@ -612,6 +613,12 @@ extension BLEManager: CBPeripheralDelegate {
         }
 
         guard let characteristics = service.characteristics else { return }
+
+        // Debug: Print discovered service and characteristics
+        print("📡️ Service: \(service.uuid.uuidString)")
+        for characteristic in characteristics {
+            print("  📝 Characteristic: \(characteristic.uuid.uuidString)")
+        }
 
         for characteristic in characteristics {
             // Store characteristic references
