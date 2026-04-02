@@ -22,6 +22,7 @@
 		AAA0000025 /* DialerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000026 /* DialerView.swift */; };
 		AAA0000027 /* SMSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000028 /* SMSView.swift */; };
 		AAA0000029 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000030 /* SettingsView.swift */; };
+		AAA0000061 /* BluetoothService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000062 /* BluetoothService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		AAA0000026 /* DialerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialerView.swift; sourceTree = "<group>"; };
 		AAA0000028 /* SMSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSView.swift; sourceTree = "<group>"; };
 		AAA0000030 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AAA0000062 /* BluetoothService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothService.swift; sourceTree = "<group>"; };
 		AAA0000031 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AAA0000032 /* StarMateApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarMateApp.entitlements; sourceTree = "<group>"; };
 		AAA0000033 /* StarMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -113,6 +115,7 @@
 				AAA0000018 /* BLEManager.swift */,
 				AAA0000020 /* CallManager.swift */,
 				AAA0000022 /* SMSManager.swift */,
+				AAA0000062 /* BluetoothService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -243,6 +246,7 @@
 				AAA0000025 /* DialerView.swift in Sources */,
 				AAA0000027 /* SMSView.swift in Sources */,
 				AAA0000029 /* SettingsView.swift in Sources */,
+					AAA0000061 /* BluetoothService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
