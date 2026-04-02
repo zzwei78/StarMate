@@ -18,6 +18,7 @@
 		AAA0000017 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000018 /* BLEManager.swift */; };
 		AAA0000019 /* CallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000020 /* CallManager.swift */; };
 		AAA0000021 /* SMSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000022 /* SMSManager.swift */; };
+		AAA0000063 /* BluetoothService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000064 /* BluetoothService.swift */; };
 		AAA0000023 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000024 /* HomeView.swift */; };
 		AAA0000025 /* DialerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000026 /* DialerView.swift */; };
 		AAA0000027 /* SMSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000028 /* SMSView.swift */; };
@@ -36,6 +37,7 @@
 		AAA0000018 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
 		AAA0000020 /* CallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManager.swift; sourceTree = "<group>"; };
 		AAA0000022 /* SMSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSManager.swift; sourceTree = "<group>"; };
+		AAA0000064 /* BluetoothService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothService.swift; sourceTree = "<group>"; };
 		AAA0000024 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		AAA0000026 /* DialerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialerView.swift; sourceTree = "<group>"; };
 		AAA0000028 /* SMSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSView.swift; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 				AAA0000018 /* BLEManager.swift */,
 				AAA0000020 /* CallManager.swift */,
 				AAA0000022 /* SMSManager.swift */,
+				AAA0000064 /* BluetoothService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -239,6 +242,7 @@
 				AAA0000017 /* BLEManager.swift in Sources */,
 				AAA0000019 /* CallManager.swift in Sources */,
 				AAA0000021 /* SMSManager.swift in Sources */,
+					AAA0000063 /* BluetoothService.swift in Sources */,
 				AAA0000023 /* HomeView.swift in Sources */,
 				AAA0000025 /* DialerView.swift in Sources */,
 				AAA0000027 /* SMSView.swift in Sources */,
