@@ -59,6 +59,14 @@ struct DeviceInfo {
     var workMode: WorkMode
 }
 
+// MARK: - Scanned Device (for scan results)
+struct ScannedDevice: Identifiable, Equatable {
+    let id = UUID()
+    let name: String
+    let address: String
+    let rssi: Int
+}
+
 // MARK: - Terminal Version
 struct TerminalVersion {
     let hardwareVersion: String
@@ -66,6 +74,15 @@ struct TerminalVersion {
     let firmwareVersion: String
     let manufacturer: String
     let modelNumber: String
+}
+
+// MARK: - System Info
+struct SystemInfo {
+    let deviceName: String
+    let hardwareVersion: String
+    let softwareVersion: String
+    let mcuVersion: String
+    let moduleVersion: String
 }
 
 // MARK: - Battery Info
