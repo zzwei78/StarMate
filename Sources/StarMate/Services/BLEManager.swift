@@ -460,7 +460,7 @@ extension BLEManager: CBPeripheralDelegate {
 
         for characteristic in characteristics {
             // Store characteristic reference
-            characteristics[characteristic.uuidString] = characteristic
+            characteristics[characteristic.uuid.uuidString] = characteristic
 
             print("Discovered characteristic: \(characteristic.uuid)")
 
