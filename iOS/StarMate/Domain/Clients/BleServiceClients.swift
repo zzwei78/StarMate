@@ -24,6 +24,9 @@ protocol SystemServiceClientProtocol: AnyObject {
     /// Get TT Module status (CMD_GET_TT_STATUS 0x60)
     func getTtModuleStatus() async -> Result<TtModuleStatus, Error>
 
+    /// Set TT Module power (v3.1)
+    func setTtModulePower(_ enabled: Bool) async -> Result<Void, Error>
+
     /// Start voice service
     func startVoiceService() async -> Result<Void, Error>
 
@@ -41,12 +44,6 @@ protocol SystemServiceClientProtocol: AnyObject {
 
     /// Reboot TT Module
     func rebootModule() async -> Result<Void, Error>
-
-    /// Get TT Module status (v3.1)
-    func getTtModuleStatus() async -> Result<TtModuleStatus, Error>
-
-    /// Set TT Module power (v3.1)
-    func setTtModulePower(_ enabled: Bool) async -> Result<Void, Error>
 
     /// Called by BleManager when GATT disconnects
     func onGattClosed()

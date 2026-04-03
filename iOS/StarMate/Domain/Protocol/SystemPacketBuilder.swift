@@ -125,6 +125,8 @@ final class SystemPacketBuilder {
     /// - Parameter packet: Raw response packet
     /// - Returns: Parsed response or nil if invalid
     static func parseResponse(_ packet: Data) -> ParsedResponse? {
+        print("[SysPacketBuilder] parseResponse called with \(packet.count) bytes: \(packet as NSData)")
+
         guard packet.count >= 6 else {
             print("[SysPacketBuilder] Response too short: \(packet.count) bytes")
             return nil
@@ -134,6 +136,8 @@ final class SystemPacketBuilder {
         let respCode = packet[1]
         let result = packet[2].toInt() & 0xFF
         let dataLen = min(packet[3].toInt(), MAX_RESPONSE_DATA_LEN)
+
+        print("[SysPacketBuilder] seq=\(seq), respCode=\(respCode), result=\(result), dataLen=\(dataLen), totalBytes=\(packet.count)")
 
         let minExpectedLen = MIN_HEADER_SIZE + dataLen + RESPONSE_CRC_SIZE
         guard packet.count >= minExpectedLen else {
@@ -178,7 +182,7 @@ final class SystemPacketBuilder {
 
 // MARK: - Data Extension for Safe Int Conversion
 
-private extension UInt8 {
+internal extension UInt8 {
     func toInt() -> Int {
         return Int(self)
     }

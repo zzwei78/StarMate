@@ -232,8 +232,10 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
                 continue
             }
 
-            // Calculate actual packet length
-            let packetLength = SystemPacketBuilder.packetLength(for: parsed)
+            // Calculate packet length: 4-byte header + DATA_LEN + 2-byte CRC
+            let dataLen = responseBuffer[3].toInt()
+            let packetLength = 4 + dataLen + 2
+            print("[SystemService] Consuming packet: seq=\(parsed.seq), length=\(packetLength), buffer remaining=\(responseBuffer.count)")
             responseBuffer = responseBuffer.dropFirst(packetLength)
 
             // Find and complete pending response

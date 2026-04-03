@@ -167,8 +167,7 @@ final class BleManagerImpl: NSObject, BleManagerProtocol, ObservableObject {
     }
 
     func getOtaServiceClient() -> OtaServiceClientProtocol {
-        // TODO: Implement
-        fatalError("Not implemented")
+        return otaServiceClient
     }
 
     // MARK: - MTU
