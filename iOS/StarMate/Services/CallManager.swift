@@ -88,7 +88,7 @@ class CallManager: ObservableObject {
             }
         }
 
-        callState = .ending
+        callState = .ending(reason: .localHangup)
         stopCallTimer()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in

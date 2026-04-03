@@ -7,43 +7,78 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		047017552F7F6DBC00F322AC /* BluetoothService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017542F7F6DBC00F322AC /* BluetoothService.swift */; };
+		047017622F7F6DD000F322AC /* DialerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017562F7F6DD000F322AC /* DialerView.swift */; };
+		047017632F7F6DD000F322AC /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017582F7F6DD000F322AC /* HomeView.swift */; };
+		047017642F7F6DD000F322AC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470175A2F7F6DD000F322AC /* SettingsView.swift */; };
+		047017652F7F6DD000F322AC /* IconGeneratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470175E2F7F6DD000F322AC /* IconGeneratorView.swift */; };
+		047017662F7F6DD000F322AC /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470175F2F7F6DD000F322AC /* LaunchScreenView.swift */; };
+		047017672F7F6DD000F322AC /* SMSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470175C2F7F6DD000F322AC /* SMSView.swift */; };
+		047017892F7F6E0700F322AC /* AtModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017792F7F6E0700F322AC /* AtModels.swift */; };
+		0470178A2F7F6E0700F322AC /* SystemPacketBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017862F7F6E0700F322AC /* SystemPacketBuilder.swift */; };
+		0470178B2F7F6E0700F322AC /* BleManagerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017762F7F6E0700F322AC /* BleManagerProtocol.swift */; };
+		0470178C2F7F6E0700F322AC /* BleUuid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017822F7F6E0700F322AC /* BleUuid.swift */; };
+		0470178D2F7F6E0700F322AC /* AtCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017812F7F6E0700F322AC /* AtCommands.swift */; };
+		0470178E2F7F6E0700F322AC /* SystemCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017852F7F6E0700F322AC /* SystemCommands.swift */; };
+		0470178F2F7F6E0700F322AC /* BleUuidHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017832F7F6E0700F322AC /* BleUuidHelper.swift */; };
+		047017902F7F6E0700F322AC /* BleServiceClients.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017772F7F6E0700F322AC /* BleServiceClients.swift */; };
+		047017912F7F6E0700F322AC /* OtaModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177E2F7F6E0700F322AC /* OtaModels.swift */; };
+		047017922F7F6E0700F322AC /* ModuleModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177D2F7F6E0700F322AC /* ModuleModels.swift */; };
+		047017932F7F6E0700F322AC /* ConnectModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177B2F7F6E0700F322AC /* ConnectModels.swift */; };
+		047017942F7F6E0700F322AC /* Crc16.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017842F7F6E0700F322AC /* Crc16.swift */; };
+		047017952F7F6E0700F322AC /* SmsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177F2F7F6E0700F322AC /* SmsModels.swift */; };
+		047017962F7F6E0700F322AC /* DeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177C2F7F6E0700F322AC /* DeviceModels.swift */; };
+		047017972F7F6E0700F322AC /* CallModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177A2F7F6E0700F322AC /* CallModels.swift */; };
+		047017A02F7F6E2500F322AC /* OtaServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */; };
+		047017A12F7F6E2500F322AC /* BleManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017992F7F6E2500F322AC /* BleManagerImpl.swift */; };
+		047017A22F7F6E2500F322AC /* SystemServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */; };
+		047017A32F7F6E2500F322AC /* VoiceServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */; };
+		047017A42F7F6E2500F322AC /* CallRecorderImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */; };
+		047017A52F7F6E2500F322AC /* AtServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */; };
+		047017A92F7F6E3200F322AC /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017A62F7F6E3200F322AC /* AppTheme.swift */; };
+		047017AA2F7F6E3200F322AC /* ColorScheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017A72F7F6E3200F322AC /* ColorScheme.swift */; };
+		047017AE2F7F6E3B00F322AC /* SMSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017AC2F7F6E3B00F322AC /* SMSManager.swift */; };
+		047017AF2F7F6E3B00F322AC /* CallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017AB2F7F6E3B00F322AC /* CallManager.swift */; };
 		AAA0000001 /* StarMateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000002 /* StarMateApp.swift */; };
 		AAA0000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000004 /* ContentView.swift */; };
-		AAA0000005 /* ColorScheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000006 /* ColorScheme.swift */; };
-		AAA0000007 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000008 /* AppTheme.swift */; };
-		AAA0000009 /* DeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000010 /* DeviceModels.swift */; };
-		AAA0000011 /* CallModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000012 /* CallModels.swift */; };
-		AAA0000013 /* SMSModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000014 /* SMSModels.swift */; };
-		AAA0000015 /* OTAModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000016 /* OTAModels.swift */; };
-		AAA0000017 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000018 /* BLEManager.swift */; };
-		AAA0000019 /* CallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000020 /* CallManager.swift */; };
-		AAA0000021 /* SMSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000022 /* SMSManager.swift */; };
-		AAA0000063 /* BluetoothService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000064 /* BluetoothService.swift */; };
-		AAA0000023 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000024 /* HomeView.swift */; };
-		AAA0000025 /* DialerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000026 /* DialerView.swift */; };
-		AAA0000027 /* SMSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000028 /* SMSView.swift */; };
-		AAA0000029 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000030 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		047017542F7F6DBC00F322AC /* BluetoothService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothService.swift; sourceTree = "<group>"; };
+		047017562F7F6DD000F322AC /* DialerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialerView.swift; sourceTree = "<group>"; };
+		047017582F7F6DD000F322AC /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		0470175A2F7F6DD000F322AC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		0470175C2F7F6DD000F322AC /* SMSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSView.swift; sourceTree = "<group>"; };
+		0470175E2F7F6DD000F322AC /* IconGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconGeneratorView.swift; sourceTree = "<group>"; };
+		0470175F2F7F6DD000F322AC /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
+		047017762F7F6E0700F322AC /* BleManagerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleManagerProtocol.swift; sourceTree = "<group>"; };
+		047017772F7F6E0700F322AC /* BleServiceClients.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleServiceClients.swift; sourceTree = "<group>"; };
+		047017792F7F6E0700F322AC /* AtModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtModels.swift; sourceTree = "<group>"; };
+		0470177A2F7F6E0700F322AC /* CallModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallModels.swift; sourceTree = "<group>"; };
+		0470177B2F7F6E0700F322AC /* ConnectModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectModels.swift; sourceTree = "<group>"; };
+		0470177C2F7F6E0700F322AC /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
+		0470177D2F7F6E0700F322AC /* ModuleModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModuleModels.swift; sourceTree = "<group>"; };
+		0470177E2F7F6E0700F322AC /* OtaModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtaModels.swift; sourceTree = "<group>"; };
+		0470177F2F7F6E0700F322AC /* SmsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmsModels.swift; sourceTree = "<group>"; };
+		047017812F7F6E0700F322AC /* AtCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtCommands.swift; sourceTree = "<group>"; };
+		047017822F7F6E0700F322AC /* BleUuid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleUuid.swift; sourceTree = "<group>"; };
+		047017832F7F6E0700F322AC /* BleUuidHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleUuidHelper.swift; sourceTree = "<group>"; };
+		047017842F7F6E0700F322AC /* Crc16.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Crc16.swift; sourceTree = "<group>"; };
+		047017852F7F6E0700F322AC /* SystemCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCommands.swift; sourceTree = "<group>"; };
+		047017862F7F6E0700F322AC /* SystemPacketBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPacketBuilder.swift; sourceTree = "<group>"; };
+		047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtServiceClientImpl.swift; sourceTree = "<group>"; };
+		047017992F7F6E2500F322AC /* BleManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleManagerImpl.swift; sourceTree = "<group>"; };
+		0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallRecorderImpl.swift; sourceTree = "<group>"; };
+		0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtaServiceClientImpl.swift; sourceTree = "<group>"; };
+		0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemServiceClientImpl.swift; sourceTree = "<group>"; };
+		0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceServiceClientImpl.swift; sourceTree = "<group>"; };
+		047017A62F7F6E3200F322AC /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		047017A72F7F6E3200F322AC /* ColorScheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorScheme.swift; sourceTree = "<group>"; };
+		047017AB2F7F6E3B00F322AC /* CallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManager.swift; sourceTree = "<group>"; };
+		047017AC2F7F6E3B00F322AC /* SMSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSManager.swift; sourceTree = "<group>"; };
 		AAA0000002 /* StarMateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarMateApp.swift; sourceTree = "<group>"; };
 		AAA0000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AAA0000006 /* ColorScheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorScheme.swift; sourceTree = "<group>"; };
-		AAA0000008 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
-		AAA0000010 /* DeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModels.swift; sourceTree = "<group>"; };
-		AAA0000012 /* CallModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallModels.swift; sourceTree = "<group>"; };
-		AAA0000014 /* SMSModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSModels.swift; sourceTree = "<group>"; };
-		AAA0000016 /* OTAModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTAModels.swift; sourceTree = "<group>"; };
-		AAA0000018 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
-		AAA0000020 /* CallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManager.swift; sourceTree = "<group>"; };
-		AAA0000022 /* SMSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSManager.swift; sourceTree = "<group>"; };
-		AAA0000064 /* BluetoothService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothService.swift; sourceTree = "<group>"; };
-		AAA0000024 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		AAA0000026 /* DialerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialerView.swift; sourceTree = "<group>"; };
-		AAA0000028 /* SMSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSView.swift; sourceTree = "<group>"; };
-		AAA0000030 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AAA0000031 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AAA0000032 /* StarMateApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarMateApp.entitlements; sourceTree = "<group>"; };
 		AAA0000033 /* StarMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -58,6 +93,144 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		047017572F7F6DD000F322AC /* Dialer */ = {
+			isa = PBXGroup;
+			children = (
+				047017562F7F6DD000F322AC /* DialerView.swift */,
+			);
+			path = Dialer;
+			sourceTree = "<group>";
+		};
+		047017592F7F6DD000F322AC /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				047017582F7F6DD000F322AC /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		0470175B2F7F6DD000F322AC /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				0470175A2F7F6DD000F322AC /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		0470175D2F7F6DD000F322AC /* SMS */ = {
+			isa = PBXGroup;
+			children = (
+				0470175C2F7F6DD000F322AC /* SMSView.swift */,
+			);
+			path = SMS;
+			sourceTree = "<group>";
+		};
+		047017602F7F6DD000F322AC /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				0470175E2F7F6DD000F322AC /* IconGeneratorView.swift */,
+				0470175F2F7F6DD000F322AC /* LaunchScreenView.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		047017612F7F6DD000F322AC /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				047017572F7F6DD000F322AC /* Dialer */,
+				047017592F7F6DD000F322AC /* Home */,
+				0470175B2F7F6DD000F322AC /* Settings */,
+				0470175D2F7F6DD000F322AC /* SMS */,
+				047017602F7F6DD000F322AC /* Utilities */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		047017782F7F6E0700F322AC /* Clients */ = {
+			isa = PBXGroup;
+			children = (
+				047017762F7F6E0700F322AC /* BleManagerProtocol.swift */,
+				047017772F7F6E0700F322AC /* BleServiceClients.swift */,
+			);
+			path = Clients;
+			sourceTree = "<group>";
+		};
+		047017802F7F6E0700F322AC /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				047017792F7F6E0700F322AC /* AtModels.swift */,
+				0470177A2F7F6E0700F322AC /* CallModels.swift */,
+				0470177B2F7F6E0700F322AC /* ConnectModels.swift */,
+				0470177C2F7F6E0700F322AC /* DeviceModels.swift */,
+				0470177D2F7F6E0700F322AC /* ModuleModels.swift */,
+				0470177E2F7F6E0700F322AC /* OtaModels.swift */,
+				0470177F2F7F6E0700F322AC /* SmsModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		047017872F7F6E0700F322AC /* Protocol */ = {
+			isa = PBXGroup;
+			children = (
+				047017812F7F6E0700F322AC /* AtCommands.swift */,
+				047017822F7F6E0700F322AC /* BleUuid.swift */,
+				047017832F7F6E0700F322AC /* BleUuidHelper.swift */,
+				047017842F7F6E0700F322AC /* Crc16.swift */,
+				047017852F7F6E0700F322AC /* SystemCommands.swift */,
+				047017862F7F6E0700F322AC /* SystemPacketBuilder.swift */,
+			);
+			path = Protocol;
+			sourceTree = "<group>";
+		};
+		047017882F7F6E0700F322AC /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				047017782F7F6E0700F322AC /* Clients */,
+				047017802F7F6E0700F322AC /* Models */,
+				047017872F7F6E0700F322AC /* Protocol */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		0470179E2F7F6E2500F322AC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */,
+				047017992F7F6E2500F322AC /* BleManagerImpl.swift */,
+				0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */,
+				0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */,
+				0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */,
+				0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		0470179F2F7F6E2500F322AC /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				0470179E2F7F6E2500F322AC /* Services */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		047017A82F7F6E3200F322AC /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				047017A62F7F6E3200F322AC /* AppTheme.swift */,
+				047017A72F7F6E3200F322AC /* ColorScheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		047017AD2F7F6E3B00F322AC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				047017AB2F7F6E3B00F322AC /* CallManager.swift */,
+				047017AC2F7F6E3B00F322AC /* SMSManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		AAA0000035 = {
 			isa = PBXGroup;
 			children = (
@@ -69,14 +242,15 @@
 		AAA0000036 /* StarMate */ = {
 			isa = PBXGroup;
 			children = (
+				047017A82F7F6E3200F322AC /* Theme */,
 				AAA0000002 /* StarMateApp.swift */,
 				AAA0000004 /* ContentView.swift */,
 				AAA0000031 /* Info.plist */,
-				AAA0000032 /* StarMateApp.entitlements */,
-				AAA0000038 /* Theme */,
-				AAA0000039 /* Models */,
-				AAA0000040 /* Services */,
-				AAA0000041 /* Views */,
+				047017542F7F6DBC00F322AC /* BluetoothService.swift */,
+				047017612F7F6DD000F322AC /* Views */,
+				047017882F7F6E0700F322AC /* Domain */,
+				0470179F2F7F6E2500F322AC /* Data */,
+				047017AD2F7F6E3B00F322AC /* Services */,
 			);
 			path = StarMate;
 			sourceTree = "<group>";
@@ -87,80 +261,6 @@
 				AAA0000033 /* StarMate.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		AAA0000038 /* Theme */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000006 /* ColorScheme.swift */,
-				AAA0000008 /* AppTheme.swift */,
-			);
-			path = Theme;
-			sourceTree = "<group>";
-		};
-		AAA0000039 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000010 /* DeviceModels.swift */,
-				AAA0000012 /* CallModels.swift */,
-				AAA0000014 /* SMSModels.swift */,
-				AAA0000016 /* OTAModels.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		AAA0000040 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000018 /* BLEManager.swift */,
-				AAA0000020 /* CallManager.swift */,
-				AAA0000022 /* SMSManager.swift */,
-				AAA0000064 /* BluetoothService.swift */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
-		AAA0000041 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000042 /* Home */,
-				AAA0000043 /* Dialer */,
-				AAA0000044 /* SMS */,
-				AAA0000045 /* Settings */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		AAA0000042 /* Home */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000024 /* HomeView.swift */,
-			);
-			path = Home;
-			sourceTree = "<group>";
-		};
-		AAA0000043 /* Dialer */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000026 /* DialerView.swift */,
-			);
-			path = Dialer;
-			sourceTree = "<group>";
-		};
-		AAA0000044 /* SMS */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000028 /* SMSView.swift */,
-			);
-			path = SMS;
-			sourceTree = "<group>";
-		};
-		AAA0000045 /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				AAA0000030 /* SettingsView.swift */,
-			);
-			path = Settings;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -232,21 +332,39 @@
 			buildActionMask = 2147483647;
 			files = (
 				AAA0000001 /* StarMateApp.swift in Sources */,
+				047017552F7F6DBC00F322AC /* BluetoothService.swift in Sources */,
 				AAA0000003 /* ContentView.swift in Sources */,
-				AAA0000005 /* ColorScheme.swift in Sources */,
-				AAA0000007 /* AppTheme.swift in Sources */,
-				AAA0000009 /* DeviceModels.swift in Sources */,
-				AAA0000011 /* CallModels.swift in Sources */,
-				AAA0000013 /* SMSModels.swift in Sources */,
-				AAA0000015 /* OTAModels.swift in Sources */,
-				AAA0000017 /* BLEManager.swift in Sources */,
-				AAA0000019 /* CallManager.swift in Sources */,
-				AAA0000021 /* SMSManager.swift in Sources */,
-					AAA0000063 /* BluetoothService.swift in Sources */,
-				AAA0000023 /* HomeView.swift in Sources */,
-				AAA0000025 /* DialerView.swift in Sources */,
-				AAA0000027 /* SMSView.swift in Sources */,
-				AAA0000029 /* SettingsView.swift in Sources */,
+				047017622F7F6DD000F322AC /* DialerView.swift in Sources */,
+				047017632F7F6DD000F322AC /* HomeView.swift in Sources */,
+				047017642F7F6DD000F322AC /* SettingsView.swift in Sources */,
+				047017652F7F6DD000F322AC /* IconGeneratorView.swift in Sources */,
+				047017662F7F6DD000F322AC /* LaunchScreenView.swift in Sources */,
+				047017892F7F6E0700F322AC /* AtModels.swift in Sources */,
+				0470178A2F7F6E0700F322AC /* SystemPacketBuilder.swift in Sources */,
+				0470178B2F7F6E0700F322AC /* BleManagerProtocol.swift in Sources */,
+				0470178C2F7F6E0700F322AC /* BleUuid.swift in Sources */,
+				0470178D2F7F6E0700F322AC /* AtCommands.swift in Sources */,
+				0470178E2F7F6E0700F322AC /* SystemCommands.swift in Sources */,
+				047017A02F7F6E2500F322AC /* OtaServiceClientImpl.swift in Sources */,
+				047017A12F7F6E2500F322AC /* BleManagerImpl.swift in Sources */,
+				047017A22F7F6E2500F322AC /* SystemServiceClientImpl.swift in Sources */,
+				047017A32F7F6E2500F322AC /* VoiceServiceClientImpl.swift in Sources */,
+				047017A42F7F6E2500F322AC /* CallRecorderImpl.swift in Sources */,
+				047017A92F7F6E3200F322AC /* AppTheme.swift in Sources */,
+				047017AA2F7F6E3200F322AC /* ColorScheme.swift in Sources */,
+				047017A52F7F6E2500F322AC /* AtServiceClientImpl.swift in Sources */,
+				0470178F2F7F6E0700F322AC /* BleUuidHelper.swift in Sources */,
+				047017902F7F6E0700F322AC /* BleServiceClients.swift in Sources */,
+				047017912F7F6E0700F322AC /* OtaModels.swift in Sources */,
+				047017922F7F6E0700F322AC /* ModuleModels.swift in Sources */,
+				047017932F7F6E0700F322AC /* ConnectModels.swift in Sources */,
+				047017942F7F6E0700F322AC /* Crc16.swift in Sources */,
+				047017952F7F6E0700F322AC /* SmsModels.swift in Sources */,
+				047017AE2F7F6E3B00F322AC /* SMSManager.swift in Sources */,
+				047017AF2F7F6E3B00F322AC /* CallManager.swift in Sources */,
+				047017962F7F6E0700F322AC /* DeviceModels.swift in Sources */,
+				047017972F7F6E0700F322AC /* CallModels.swift in Sources */,
+				047017672F7F6DD000F322AC /* SMSView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
