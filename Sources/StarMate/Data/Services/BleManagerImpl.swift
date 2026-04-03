@@ -588,3 +588,7 @@ extension BleManagerImpl: CBPeripheralDelegate {
 extension Notification.Name {
     static let voiceDataReceived = Notification.Name("voiceDataReceived")
 }
+
+// MARK: - Type Alias for Backward Compatibility
+/// Type alias for backward compatibility with code using BLEManager
+typealias BLEManager = BleManagerImpl
