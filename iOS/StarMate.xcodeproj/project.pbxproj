@@ -66,12 +66,12 @@
 		047017842F7F6E0700F322AC /* Crc16.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Crc16.swift; sourceTree = "<group>"; };
 		047017852F7F6E0700F322AC /* SystemCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCommands.swift; sourceTree = "<group>"; };
 		047017862F7F6E0700F322AC /* SystemPacketBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPacketBuilder.swift; sourceTree = "<group>"; };
-		047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtServiceClientImpl.swift; sourceTree = "<group>"; };
-		047017992F7F6E2500F322AC /* BleManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleManagerImpl.swift; sourceTree = "<group>"; };
-		0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallRecorderImpl.swift; sourceTree = "<group>"; };
-		0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtaServiceClientImpl.swift; sourceTree = "<group>"; };
-		0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemServiceClientImpl.swift; sourceTree = "<group>"; };
-		0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceServiceClientImpl.swift; sourceTree = "<group>"; };
+		047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/AtServiceClientImpl.swift; sourceTree = "<group>"; };
+		047017992F7F6E2500F322AC /* BleManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/BleManagerImpl.swift; sourceTree = "<group>"; };
+		0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/CallRecorderImpl.swift; sourceTree = "<group>"; };
+		0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/OtaServiceClientImpl.swift; sourceTree = "<group>"; };
+		0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/SystemServiceClientImpl.swift; sourceTree = "<group>"; };
+		0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/VoiceServiceClientImpl.swift; sourceTree = "<group>"; };
 		047017A62F7F6E3200F322AC /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		047017A72F7F6E3200F322AC /* ColorScheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorScheme.swift; sourceTree = "<group>"; };
 		047017AB2F7F6E3B00F322AC /* CallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManager.swift; sourceTree = "<group>"; };
