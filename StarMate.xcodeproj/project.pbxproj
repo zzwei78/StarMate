@@ -15,7 +15,7 @@
 		AAA0000011 /* CallModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000012 /* CallModels.swift */; };
 		AAA0000013 /* SMSModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000014 /* SMSModels.swift */; };
 		AAA0000015 /* OTAModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000016 /* OTAModels.swift */; };
-		AAA0000017 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000018 /* BLEManager.swift */; };
+		AAA0000017 /* BleManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000066 /* BleManagerImpl.swift */; };
 		AAA0000019 /* CallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000020 /* CallManager.swift */; };
 		AAA0000021 /* SMSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000022 /* SMSManager.swift */; };
 		AAA0000023 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000024 /* HomeView.swift */; };
@@ -34,7 +34,7 @@
 		AAA0000012 /* CallModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallModels.swift; sourceTree = "<group>"; };
 		AAA0000014 /* SMSModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSModels.swift; sourceTree = "<group>"; };
 		AAA0000016 /* OTAModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTAModels.swift; sourceTree = "<group>"; };
-		AAA0000018 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		AAA0000066 /* BleManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/BleManagerImpl.swift; sourceTree = "<group>"; };
 		AAA0000020 /* CallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManager.swift; sourceTree = "<group>"; };
 		AAA0000022 /* SMSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSManager.swift; sourceTree = "<group>"; };
 		AAA0000024 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -112,7 +112,7 @@
 		AAA0000040 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				AAA0000018 /* BLEManager.swift */,
+				AAA0000066 /* BleManagerImpl.swift */,
 				AAA0000020 /* CallManager.swift */,
 				AAA0000022 /* SMSManager.swift */,
 				AAA0000062 /* BluetoothService.swift */,
@@ -239,7 +239,7 @@
 				AAA0000011 /* CallModels.swift in Sources */,
 				AAA0000013 /* SMSModels.swift in Sources */,
 				AAA0000015 /* OTAModels.swift in Sources */,
-				AAA0000017 /* BLEManager.swift in Sources */,
+				AAA0000017 /* BleManagerImpl.swift in Sources */,
 				AAA0000019 /* CallManager.swift in Sources */,
 				AAA0000021 /* SMSManager.swift in Sources */,
 				AAA0000023 /* HomeView.swift in Sources */,
