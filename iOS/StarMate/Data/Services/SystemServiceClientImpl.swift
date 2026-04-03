@@ -176,6 +176,13 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
 
     /// Handle notification data from BLEManager
     func handleNotification(data: Data, from characteristic: CBCharacteristic) {
+        // Only process notifications from control characteristic (command responses)
+        // Status characteristic notifications are handled separately
+        guard characteristic.uuid == BleUuid.SYSTEM_CONTROL else {
+            print("[SystemService] Ignoring notification from non-control characteristic: \(characteristic.uuid)")
+            return
+        }
+
         responseBuffer.append(data)
         processResponseBuffer()
     }
@@ -194,8 +201,9 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
         responseBuffer = Data()
 
         // Build packet using SystemPacketBuilder
-        let packet = SystemPacketBuilder.buildCommand(cmd: cmd, data: data)
-        let seq = SystemPacketBuilder.currentSequence()
+        let (packet, seq) = SystemPacketBuilder.buildCommand(cmd: cmd, data: data)
+
+        print("[SystemService] SEND cmd=0x\(String(cmd, radix: 16)), seq=\(seq)")
 
         return await withCheckedContinuation { continuation in
             responseQueue.sync {
@@ -225,26 +233,19 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
     }
 
     private func processResponseBuffer() {
-        print("[SystemService] processResponseBuffer: buffer.count=\(responseBuffer.count), first 20 bytes: \(responseBuffer.prefix(20).map { String(format: "%02X", $0) }.joined(separator: " "))")
+        print("[SystemService] processResponseBuffer: buffer.count=\(responseBuffer.count), bytes: \(responseBuffer.prefix(20).map { String(format: "%02X", $0) }.joined(separator: " "))")
 
         while responseBuffer.count >= 6 {
-            // Read and clamp dataLen BEFORE parsing (same as CosmoCat)
+            // Ensure we have at least 4 bytes for the header before reading DATA_LEN
+            guard responseBuffer.count >= 4 else {
+                return
+            }
+
             let rawDataLen = Int(responseBuffer[3])
-            let dataLen = max(0, min(rawDataLen, 96))  // Clamp to 0-96 per protocol (same as coerceIn)
-            let need4 = 4 + dataLen + 2  // 4-byte header + data + 2-byte CRC
-            let need5 = 5 + dataLen + 2  // 5-byte header variant
+            let dataLen = max(0, min(rawDataLen, 96))  // Clamp to 0-96 per protocol
+            let packetLength = 4 + dataLen + 2  // 4-byte header + data + 2-byte CRC
 
-            print("[SystemService] rawDataLen=\(rawDataLen), clampedDataLen=\(dataLen), need4=\(need4), need5=\(need5), bufferCount=\(responseBuffer.count)")
-
-            // Determine actual packet length (support both 4-byte and 5-byte header)
-            let packetLength: Int
-            if responseBuffer.count >= need5 {
-                packetLength = need5
-            } else if responseBuffer.count >= need4 {
-                packetLength = need4
-            } else {
-                // Not enough data yet, wait for more
-                print("[SystemService] Not enough data: need \(need4) or \(need5), have \(responseBuffer.count)")
+            guard responseBuffer.count >= packetLength else {
                 return
             }
 
@@ -253,16 +254,21 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
 
             guard let parsed = SystemPacketBuilder.parseResponse(packetData) else {
                 // Invalid packet, drop first byte and try again
-                print("[SystemService] Parse failed, dropping first byte. Buffer=\(responseBuffer.count) bytes")
                 responseBuffer = responseBuffer.dropFirst()
                 continue
             }
 
-            print("[SystemService] Consuming packet: seq=\(parsed.seq), dataLen=\(dataLen), packetLen=\(packetLength), buffer=\(responseBuffer.count)")
-            responseBuffer = responseBuffer.dropFirst(packetLength)
+            // Drop the consumed packet - use subdata to create a new copy instead of slice
+            let remainingBytes = responseBuffer.count - packetLength
+            if remainingBytes > 0 {
+                responseBuffer = responseBuffer.subdata(in: packetLength..<responseBuffer.count)
+            } else {
+                responseBuffer = Data()
+            }
 
             // Find and complete pending response
             responseQueue.sync {
+                print("[SystemService] RECV seq=\(parsed.seq), pending keys: \(pendingResponses.keys.map { "0x\($0)" })")
                 if let continuation = pendingResponses.removeValue(forKey: parsed.seq) {
                     if parsed.isSuccess {
                         continuation.resume(returning: .success(parsed.data))

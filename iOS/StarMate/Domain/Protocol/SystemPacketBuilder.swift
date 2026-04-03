@@ -61,8 +61,8 @@ final class SystemPacketBuilder {
     /// - Parameters:
     ///   - cmd: Command byte (see SystemCommands)
     ///   - data: Optional data bytes (max 240 bytes)
-    /// - Returns: Complete packet with CRC
-    static func buildCommand(cmd: UInt8, data: Data = Data()) -> Data {
+    /// - Returns: Tuple of (packet, sequenceNumber)
+    static func buildCommand(cmd: UInt8, data: Data = Data()) -> (packet: Data, seq: UInt8) {
         precondition(data.count <= MAX_DATA_SIZE, "Data size exceeds maximum of \(MAX_DATA_SIZE)")
 
         let seq = sequenceNumber
@@ -83,7 +83,7 @@ final class SystemPacketBuilder {
         packet.append(UInt8(crc & 0xFF))        // LSB first
         packet.append(UInt8((crc >> 8) & 0xFF)) // MSB second
 
-        return packet
+        return (packet, seq)
     }
 
     /// Build a service control command (start/stop/status)
@@ -91,7 +91,7 @@ final class SystemPacketBuilder {
     ///   - cmd: Command byte (CMD_SERVICE_START, CMD_SERVICE_STOP, or CMD_SERVICE_STATUS)
     ///   - serviceId: Service ID (see ServiceId)
     /// - Returns: Complete packet with CRC
-    static func buildServiceCommand(cmd: UInt8, serviceId: UInt8) -> Data {
+    static func buildServiceCommand(cmd: UInt8, serviceId: UInt8) -> (packet: Data, seq: UInt8) {
         var data = Data()
         data.append(0x01)        // param count = 1
         data.append(serviceId)   // service ID
