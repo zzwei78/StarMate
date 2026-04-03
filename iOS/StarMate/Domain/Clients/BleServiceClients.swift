@@ -21,6 +21,9 @@ protocol SystemServiceClientProtocol: AnyObject {
     /// Read battery status
     func readBattery() async -> Result<BatteryInfo, Error>
 
+    /// Get TT Module status (CMD_GET_TT_STATUS 0x60)
+    func getTtModuleStatus() async -> Result<TtModuleStatus, Error>
+
     /// Start voice service
     func startVoiceService() async -> Result<Void, Error>
 
