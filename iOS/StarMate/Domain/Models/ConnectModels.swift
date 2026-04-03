@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - BLE Connection State
 /// BLE connection state machine
@@ -45,6 +46,34 @@ struct ScannedDevice: Identifiable, Equatable {
     let name: String
     let address: String
     let rssi: Int
+
+    var signalIcon: String {
+        if rssi >= -60 {
+            return "antenna.radiowaves.left.and.right"
+        } else if rssi >= -70 {
+            return "antenna.radiowaves.left.and.right"
+        } else if rssi >= -80 {
+            return "antenna.radiowaves.left.and.right"
+        } else if rssi >= -90 {
+            return "antenna.radiowaves.left.and.right"
+        } else {
+            return "antenna.radiowaves.left.and.right.slash"
+        }
+    }
+
+    var signalColor: Color {
+        if rssi >= -60 {
+            return .systemGreen
+        } else if rssi >= -70 {
+            return .systemGreen
+        } else if rssi >= -80 {
+            return .systemOrange
+        } else if rssi >= -90 {
+            return .systemOrange
+        } else {
+            return .systemRed
+        }
+    }
 }
 
 // MARK: - Device Error

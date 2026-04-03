@@ -357,23 +357,3 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
             .isEmpty ? "N/A" : str.trimmingCharacters(in: CharacterSet(charactersIn: "\0 "))
     }
 }
-
-// MARK: - Supporting Types
-
-/// Battery info from System Service
-struct BatteryInfo: Equatable {
-    let level: Int
-    let voltage: Int
-    let current: Int
-    let isCharging: Bool
-    let isWirelessCharging: Bool
-}
-
-/// System info from GATT System Service
-struct SystemInfo: Equatable {
-    let deviceName: String
-    let hardwareVersion: String
-    let softwareVersion: String
-    let mcuVersion: String
-    let moduleVersion: String
-}

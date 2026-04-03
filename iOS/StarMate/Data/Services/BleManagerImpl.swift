@@ -138,11 +138,6 @@ final class BleManagerImpl: NSObject, BleManagerProtocol, ObservableObject {
         resetState()
     }
 
-    func isOtaInProgress() -> Bool {
-        // Check OTA client state
-        return false // TODO: Implement
-    }
-
     // MARK: - GATT Clients
 
     func getSystemClient() -> SystemServiceClientProtocol {
@@ -393,8 +388,8 @@ extension BleManagerImpl: CBCentralManagerDelegate {
 
             discoveredPeripherals[address] = peripheral
 
-            // Filter for TTCat devices
-            if name.contains("TTCat") || name.contains("StarMate") {
+            // Filter for TTCat devices only
+            if name.contains("TTCat") || name.contains("天通猫") || name.contains("StarMate") {
                 let device = ScannedDevice(name: name, address: address, rssi: RSSI.intValue)
                 if !scannedDevices.contains(where: { $0.address == address }) {
                     scannedDevices.append(device)

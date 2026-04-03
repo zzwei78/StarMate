@@ -72,12 +72,12 @@ final class AtServiceClientImpl: AtServiceClientProtocol {
         currentCommand = nil
 
         // Fail all pending responses
-        responseQueue.sync {
+        responseQueue.sync(execute: {
             for (_, continuation) in responseContinuations {
                 continuation.resume(returning: .timeout(command: ""))
             }
             responseContinuations.removeAll()
-        }
+        })
     }
 
     // MARK: - Protocol: AtServiceClientProtocol
@@ -108,32 +108,19 @@ final class AtServiceClientImpl: AtServiceClientProtocol {
         atResponseBuffer = ""
         currentCommand = command
 
-        let responseData = await withCheckedContinuation { (continuation: CheckedContinuation<Result<Data, Error>, Never>) in
-            responseQueue.sync {
-                self.responseContinuations[command] = { response in
-                    switch response {
-                    case .success(let data):
-                        continuation.resume(returning: .success(data))
-                    case .failure(let code, let msg):
-                        continuation.resume(returning: .failure(NSError(domain: "AtService", code: code, userInfo: [NSLocalizedDescriptionKey: msg])))
-                    case .cmeError(let code):
-                        continuation.resume(returning: .failure(NSError(domain: "AtService", code: Int(code), userInfo: [NSLocalizedDescriptionKey: "CME ERROR: \(code)"])))
-                    case .cmsError(let code):
-                        continuation.resume(returning: .failure(NSError(domain: "AtService", code: Int(code), userInfo: [NSLocalizedDescriptionKey: "CMS ERROR: \(code)"])))
-                    case .timeout:
-                        continuation.resume(returning: .failure(NSError(domain: "AtService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Timeout"])))
-                    }
-                }
-            }
+        let responseData = await withCheckedContinuation { (continuation: CheckedContinuation<AtResponse, Never>) in
+            responseQueue.sync(execute: {
+                self.responseContinuations[command] = continuation
+            })
 
             // Set timeout
             Task {
                 try? await Task.sleep(nanoseconds: UInt64(timeoutMs) * 1_000_000)
-                responseQueue.sync {
-                    if let _ = self.responseContinuations.removeValue(forKey: command) {
-                        continuation.resume(returning: .failure(NSError(domain: "AtService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Timeout"])))
+                responseQueue.sync(execute: {
+                    if let cont = self.responseContinuations.removeValue(forKey: command) {
+                        cont.resume(returning: .timeout(command: command))
                     }
-                }
+                })
             }
 
             // Send command
@@ -141,15 +128,18 @@ final class AtServiceClientImpl: AtServiceClientProtocol {
             peripheral.writeValue(data, for: char, type: .withResponse)
         }
 
-        // Convert Data to String
+        // Convert AtResponse to Result<String, Error>
         switch responseData {
         case .success(let data):
-            if let str = String(data: data, encoding: .utf8) {
-                return .success(str)
-            }
-            return .success("")
-        case .failure(let error):
-            return .failure(error)
+            return .success(data)
+        case .error(let code, let msg):
+            return .failure(NSError(domain: "AtService", code: code, userInfo: [NSLocalizedDescriptionKey: msg]))
+        case .cmeError(let code):
+            return .failure(NSError(domain: "AtService", code: Int(code), userInfo: [NSLocalizedDescriptionKey: "CME ERROR: \(code)"]))
+        case .cmsError(let code):
+            return .failure(NSError(domain: "AtService", code: Int(code), userInfo: [NSLocalizedDescriptionKey: "CMS ERROR: \(code)"]))
+        case .timeout:
+            return .failure(NSError(domain: "AtService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Timeout"]))
         }
     }
 
@@ -191,20 +181,20 @@ final class AtServiceClientImpl: AtServiceClientProtocol {
 
         // Check for terminal markers
         if atResponseBuffer.contains("OK") {
-            completeResponse(.success(atResponseBuffer.replacingOccurrences(of: "\nOK", with: "").replacingOccurrences(of: "OK", with: "").trimmingCharacters(in: .whitespacesAndNewlines)))
+            completeResponse(.success(data: atResponseBuffer.replacingOccurrences(of: "\nOK", with: "").replacingOccurrences(of: "OK", with: "").trimmingCharacters(in: .whitespacesAndNewlines)))
         } else if atResponseBuffer.contains("ERROR") {
-            completeResponse(.failure(errorCode: -1, message: atResponseBuffer))
+            completeResponse(.error(code: -1, message: atResponseBuffer))
         } else if atResponseBuffer.contains("+CME ERROR") {
             if let code = parseErrorCode(atResponseBuffer, prefix: "+CME ERROR:") {
                 completeResponse(.cmeError(code: code))
             } else {
-                completeResponse(.failure(errorCode: -1, message: atResponseBuffer))
+                completeResponse(.error(code: -1, message: atResponseBuffer))
             }
         } else if atResponseBuffer.contains("+CMS ERROR") {
             if let code = parseErrorCode(atResponseBuffer, prefix: "+CMS ERROR:") {
                 completeResponse(.cmsError(code: code))
             } else {
-                completeResponse(.failure(errorCode: -1, message: atResponseBuffer))
+                completeResponse(.error(code: -1, message: atResponseBuffer))
             }
         }
     }
@@ -215,23 +205,11 @@ final class AtServiceClientImpl: AtServiceClientProtocol {
         currentCommand = nil
         atResponseBuffer = ""
 
-        responseQueue.sync {
+        responseQueue.sync(execute: {
             if let continuation = responseContinuations.removeValue(forKey: cmd) {
-                switch response {
-                case .success(let data):
-                    continuation.resume(returning: .success(data))
-                case .failure(let code, let msg):
-                    // Reconstruct as Data for the continuation
-                    continuation.resume(returning: .failure(errorCode: code, message: msg))
-                case .cmeError(let code):
-                    continuation.resume(returning: .cmeError(code: code))
-                case .cmsError(let code):
-                    continuation.resume(returning: .cmsError(code: code))
-                case .timeout:
-                    continuation.resume(returning: .timeout)
-                }
+                continuation.resume(returning: response)
             }
-        }
+        })
 
         // Also emit to stream
         responseStreamContinuation?.yield(response)
@@ -265,18 +243,6 @@ final class AtServiceClientImpl: AtServiceClientProtocol {
         guard let range = text.range(of: prefix) else { return nil }
         let codeStr = text[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
         return Int(codeStr)
-    }
-}
-
-// MARK: - AtResponse Extension for Continuation
-
-extension AtResponse {
-    enum Storage {
-        case success(Data)
-        case failure(errorCode: Int, message: String)
-        case cmeError(code: Int)
-        case cmsError(code: Int)
-        case timeout
     }
 }
 

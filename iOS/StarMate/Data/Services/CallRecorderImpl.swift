@@ -1,6 +1,16 @@
 import Foundation
 import AVFoundation
 
+// MARK: - Call Recorder Protocol
+
+protocol CallRecorderProtocol: AnyObject {
+    var isActive: Bool { get }
+    func feedUplinkPcm(_ data: Data)
+    func feedDownlinkPcm(_ data: Data)
+    func startRecording() async
+    func stopRecording() async
+}
+
 // MARK: - Call Recorder Implementation
 /// Records each call as one WAV file: 8kHz, 16bit, mono.
 /// Mixes uplink (mic) and downlink (remote) PCM per frame; writes to Documents directory.
@@ -170,7 +180,7 @@ final class CallRecorderImpl: CallRecorderProtocol {
 
         while active && !Task.isCancelled {
             let elapsedMs = Date().millisecondsSinceEpoch - startNanos
-            let targetMs = frameIndex * Constants.FRAME_DURATION_MS
+            let targetMs = Int64(frameIndex * Constants.FRAME_DURATION_MS)
             let toWait = targetMs - elapsedMs
 
             if toWait > 0 {
@@ -190,7 +200,7 @@ final class CallRecorderImpl: CallRecorderProtocol {
                 totalPcmBytesWritten += mixed.count
             }
 
-            frameIndex++
+            frameIndex += 1
         }
 
         print("[CallRecorder] Mixer stopped after \(frameIndex) frames")

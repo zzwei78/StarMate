@@ -29,16 +29,16 @@
 		047017952F7F6E0700F322AC /* SmsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177F2F7F6E0700F322AC /* SmsModels.swift */; };
 		047017962F7F6E0700F322AC /* DeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177C2F7F6E0700F322AC /* DeviceModels.swift */; };
 		047017972F7F6E0700F322AC /* CallModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470177A2F7F6E0700F322AC /* CallModels.swift */; };
-		047017A02F7F6E2500F322AC /* OtaServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */; };
-		047017A12F7F6E2500F322AC /* BleManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017992F7F6E2500F322AC /* BleManagerImpl.swift */; };
-		047017A22F7F6E2500F322AC /* SystemServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */; };
-		047017A32F7F6E2500F322AC /* VoiceServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */; };
-		047017A42F7F6E2500F322AC /* CallRecorderImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */; };
-		047017A52F7F6E2500F322AC /* AtServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */; };
 		047017A92F7F6E3200F322AC /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017A62F7F6E3200F322AC /* AppTheme.swift */; };
 		047017AA2F7F6E3200F322AC /* ColorScheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017A72F7F6E3200F322AC /* ColorScheme.swift */; };
 		047017AE2F7F6E3B00F322AC /* SMSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017AC2F7F6E3B00F322AC /* SMSManager.swift */; };
 		047017AF2F7F6E3B00F322AC /* CallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017AB2F7F6E3B00F322AC /* CallManager.swift */; };
+		047017B82F7F71BE00F322AC /* SystemServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017B42F7F71BE00F322AC /* SystemServiceClientImpl.swift */; };
+		047017B92F7F71BE00F322AC /* VoiceServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017B52F7F71BE00F322AC /* VoiceServiceClientImpl.swift */; };
+		047017BA2F7F71BE00F322AC /* BleManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017B12F7F71BE00F322AC /* BleManagerImpl.swift */; };
+		047017BB2F7F71BE00F322AC /* CallRecorderImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017B22F7F71BE00F322AC /* CallRecorderImpl.swift */; };
+		047017BC2F7F71BE00F322AC /* AtServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017B02F7F71BE00F322AC /* AtServiceClientImpl.swift */; };
+		047017BD2F7F71BE00F322AC /* OtaServiceClientImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047017B32F7F71BE00F322AC /* OtaServiceClientImpl.swift */; };
 		AAA0000001 /* StarMateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000002 /* StarMateApp.swift */; };
 		AAA0000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000004 /* ContentView.swift */; };
 /* End PBXBuildFile section */
@@ -66,16 +66,16 @@
 		047017842F7F6E0700F322AC /* Crc16.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Crc16.swift; sourceTree = "<group>"; };
 		047017852F7F6E0700F322AC /* SystemCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCommands.swift; sourceTree = "<group>"; };
 		047017862F7F6E0700F322AC /* SystemPacketBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPacketBuilder.swift; sourceTree = "<group>"; };
-		047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/AtServiceClientImpl.swift; sourceTree = "<group>"; };
-		047017992F7F6E2500F322AC /* BleManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/BleManagerImpl.swift; sourceTree = "<group>"; };
-		0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/CallRecorderImpl.swift; sourceTree = "<group>"; };
-		0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/OtaServiceClientImpl.swift; sourceTree = "<group>"; };
-		0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/SystemServiceClientImpl.swift; sourceTree = "<group>"; };
-		0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/Services/VoiceServiceClientImpl.swift; sourceTree = "<group>"; };
 		047017A62F7F6E3200F322AC /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		047017A72F7F6E3200F322AC /* ColorScheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorScheme.swift; sourceTree = "<group>"; };
 		047017AB2F7F6E3B00F322AC /* CallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManager.swift; sourceTree = "<group>"; };
 		047017AC2F7F6E3B00F322AC /* SMSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSManager.swift; sourceTree = "<group>"; };
+		047017B02F7F71BE00F322AC /* AtServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtServiceClientImpl.swift; sourceTree = "<group>"; };
+		047017B12F7F71BE00F322AC /* BleManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleManagerImpl.swift; sourceTree = "<group>"; };
+		047017B22F7F71BE00F322AC /* CallRecorderImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallRecorderImpl.swift; sourceTree = "<group>"; };
+		047017B32F7F71BE00F322AC /* OtaServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtaServiceClientImpl.swift; sourceTree = "<group>"; };
+		047017B42F7F71BE00F322AC /* SystemServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemServiceClientImpl.swift; sourceTree = "<group>"; };
+		047017B52F7F71BE00F322AC /* VoiceServiceClientImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceServiceClientImpl.swift; sourceTree = "<group>"; };
 		AAA0000002 /* StarMateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarMateApp.swift; sourceTree = "<group>"; };
 		AAA0000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AAA0000031 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -192,27 +192,6 @@
 			path = Domain;
 			sourceTree = "<group>";
 		};
-		0470179E2F7F6E2500F322AC /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				047017982F7F6E2500F322AC /* AtServiceClientImpl.swift */,
-				047017992F7F6E2500F322AC /* BleManagerImpl.swift */,
-				0470179A2F7F6E2500F322AC /* CallRecorderImpl.swift */,
-				0470179B2F7F6E2500F322AC /* OtaServiceClientImpl.swift */,
-				0470179C2F7F6E2500F322AC /* SystemServiceClientImpl.swift */,
-				0470179D2F7F6E2500F322AC /* VoiceServiceClientImpl.swift */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
-		0470179F2F7F6E2500F322AC /* Data */ = {
-			isa = PBXGroup;
-			children = (
-				0470179E2F7F6E2500F322AC /* Services */,
-			);
-			path = Data;
-			sourceTree = "<group>";
-		};
 		047017A82F7F6E3200F322AC /* Theme */ = {
 			isa = PBXGroup;
 			children = (
@@ -231,6 +210,27 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		047017B62F7F71BE00F322AC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				047017B02F7F71BE00F322AC /* AtServiceClientImpl.swift */,
+				047017B12F7F71BE00F322AC /* BleManagerImpl.swift */,
+				047017B22F7F71BE00F322AC /* CallRecorderImpl.swift */,
+				047017B32F7F71BE00F322AC /* OtaServiceClientImpl.swift */,
+				047017B42F7F71BE00F322AC /* SystemServiceClientImpl.swift */,
+				047017B52F7F71BE00F322AC /* VoiceServiceClientImpl.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		047017B72F7F71BE00F322AC /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				047017B62F7F71BE00F322AC /* Services */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
 		AAA0000035 = {
 			isa = PBXGroup;
 			children = (
@@ -242,6 +242,7 @@
 		AAA0000036 /* StarMate */ = {
 			isa = PBXGroup;
 			children = (
+				047017B72F7F71BE00F322AC /* Data */,
 				047017A82F7F6E3200F322AC /* Theme */,
 				AAA0000002 /* StarMateApp.swift */,
 				AAA0000004 /* ContentView.swift */,
@@ -249,7 +250,6 @@
 				047017542F7F6DBC00F322AC /* BluetoothService.swift */,
 				047017612F7F6DD000F322AC /* Views */,
 				047017882F7F6E0700F322AC /* Domain */,
-				0470179F2F7F6E2500F322AC /* Data */,
 				047017AD2F7F6E3B00F322AC /* Services */,
 			);
 			path = StarMate;
@@ -345,14 +345,8 @@
 				0470178C2F7F6E0700F322AC /* BleUuid.swift in Sources */,
 				0470178D2F7F6E0700F322AC /* AtCommands.swift in Sources */,
 				0470178E2F7F6E0700F322AC /* SystemCommands.swift in Sources */,
-				047017A02F7F6E2500F322AC /* OtaServiceClientImpl.swift in Sources */,
-				047017A12F7F6E2500F322AC /* BleManagerImpl.swift in Sources */,
-				047017A22F7F6E2500F322AC /* SystemServiceClientImpl.swift in Sources */,
-				047017A32F7F6E2500F322AC /* VoiceServiceClientImpl.swift in Sources */,
-				047017A42F7F6E2500F322AC /* CallRecorderImpl.swift in Sources */,
 				047017A92F7F6E3200F322AC /* AppTheme.swift in Sources */,
 				047017AA2F7F6E3200F322AC /* ColorScheme.swift in Sources */,
-				047017A52F7F6E2500F322AC /* AtServiceClientImpl.swift in Sources */,
 				0470178F2F7F6E0700F322AC /* BleUuidHelper.swift in Sources */,
 				047017902F7F6E0700F322AC /* BleServiceClients.swift in Sources */,
 				047017912F7F6E0700F322AC /* OtaModels.swift in Sources */,
@@ -361,6 +355,12 @@
 				047017942F7F6E0700F322AC /* Crc16.swift in Sources */,
 				047017952F7F6E0700F322AC /* SmsModels.swift in Sources */,
 				047017AE2F7F6E3B00F322AC /* SMSManager.swift in Sources */,
+				047017B82F7F71BE00F322AC /* SystemServiceClientImpl.swift in Sources */,
+				047017B92F7F71BE00F322AC /* VoiceServiceClientImpl.swift in Sources */,
+				047017BA2F7F71BE00F322AC /* BleManagerImpl.swift in Sources */,
+				047017BB2F7F71BE00F322AC /* CallRecorderImpl.swift in Sources */,
+				047017BC2F7F71BE00F322AC /* AtServiceClientImpl.swift in Sources */,
+				047017BD2F7F71BE00F322AC /* OtaServiceClientImpl.swift in Sources */,
 				047017AF2F7F6E3B00F322AC /* CallManager.swift in Sources */,
 				047017962F7F6E0700F322AC /* DeviceModels.swift in Sources */,
 				047017972F7F6E0700F322AC /* CallModels.swift in Sources */,
@@ -498,7 +498,7 @@
 				CODE_SIGN_ENTITLEMENTS = StarMate/StarMateApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 5WG2P458X6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StarMate/Info.plist;
@@ -530,7 +530,7 @@
 				CODE_SIGN_ENTITLEMENTS = StarMate/StarMateApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 5WG2P458X6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StarMate/Info.plist;

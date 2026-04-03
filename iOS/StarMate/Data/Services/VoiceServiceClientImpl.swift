@@ -201,7 +201,7 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
             self.outputAudioFormat = outputFormat
 
             // Get input format and create converter if needed
-            let inputFormat = inputNode.outputFormat(fromBus: 0)
+            let inputFormat = inputNode.outputFormat(forBus: 0)
             self.inputFormat = inputFormat
 
             // Install tap on input node
@@ -386,7 +386,7 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
 
         while isRecording && !Task.isCancelled {
             let elapsedMs = Date().millisecondsSinceEpoch - startNanos
-            let targetMs = frameIndex * Constants.FRAME_DURATION_MS
+            let targetMs = Int64(frameIndex * Constants.FRAME_DURATION_MS)
             let toWait = targetMs - elapsedMs
 
             if toWait > 0 {
