@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+import SwiftUI
 
 /// Recording preferences stored in UserDefaults
 class RecordingPreferences: ObservableObject {
