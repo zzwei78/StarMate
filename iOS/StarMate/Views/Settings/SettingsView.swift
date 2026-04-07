@@ -14,8 +14,10 @@ struct SettingsView: View {
     @State private var showFilePicker = false
     @State private var otaTarget: OtaTarget?
 
-    init(bleManager: BLEManager = BLEManager()) {
-        _viewModel = StateObject(wrappedValue: SettingsViewModel(bleManager: bleManager))
+    @MainActor
+    init(bleManager: BLEManager? = nil) {
+        let manager = bleManager ?? BLEManager()
+        _viewModel = StateObject(wrappedValue: SettingsViewModel(bleManager: manager))
     }
 
     var body: some View {
