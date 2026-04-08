@@ -57,7 +57,7 @@ final class BleManagerImpl: NSObject, BleManagerProtocol, ObservableObject {
         self.callRecorder = CallRecorderImpl()
         self.systemServiceClient = SystemServiceClientImpl()
         self.atServiceClient = AtServiceClientImpl()
-        self.voiceServiceClient = VoiceServiceClientImpl(useAmrCodec: false)
+        self.voiceServiceClient = VoiceServiceClientImpl()
         self.otaServiceClient = OtaServiceClientImpl()
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)

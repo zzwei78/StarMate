@@ -1,13 +1,5 @@
 import Foundation
 
-// MARK: - Audio Mode
-
-/// 音频播放模式
-enum AudioMode {
-    case earpiece    // 听筒
-    case speaker     // 扬声器
-}
-
 // MARK: - Audio Pipeline Delegate
 
 /// 音频流水线代理协议

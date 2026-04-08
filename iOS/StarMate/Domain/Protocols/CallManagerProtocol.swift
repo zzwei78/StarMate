@@ -4,7 +4,8 @@ import Foundation
 
 /// 通话管理器协议
 ///
-/// 负责通话生命周期管理，protocol CallManagerProtocol: AnyObject {
+/// 负责通话生命周期管理
+protocol CallManagerProtocol: AnyObject {
 
     // MARK: - Published State
 

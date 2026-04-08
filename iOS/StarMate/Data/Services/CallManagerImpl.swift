@@ -149,7 +149,7 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             callState = .idle
             currentCall = nil
             await cleanupAfterCall()
-            return .failure($0)
+            return .failure(error)
         }
     }
 
@@ -206,7 +206,7 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             callState = .idle
             currentCall = nil
             await cleanupAfterCall()
-            return .failure($0)
+            return .failure(error)
         }
     }
 
@@ -440,8 +440,9 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
     /// 设置 URC 处理器
     private func setupUrcHandler() {
         urcTask = Task { [weak self] in
-            for await notification in await self?.atClient.urcStream ?? AsyncStream<AtNotification>() {
-                await self?.handleUrc(notification)
+            guard let self = self else { return }
+            for await notification in self.atClient.urcStream {
+                await self.handleUrc(notification)
             }
         }
     }
@@ -472,8 +473,9 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         if let clipRange = data.range(of: "+CLIP:") {
             let afterClip = data[clipRange.upperBound...]
             if let quoteStart = afterClip.firstIndex(of: "\""),
-               let quoteEnd = afterClip[afterClip.index(afterClip.startIndex, offsetBy: quoteStart + 1)...].firstIndex(of: "\"") {
-                let numberRange = afterClip.index(afterClip.startIndex, offsetBy: quoteStart + 1)..<quoteEnd
+               let afterQuoteStart = afterClip.index(quoteStart, offsetBy: 1, limitedBy: afterClip.endIndex),
+               let quoteEnd = afterClip[afterQuoteStart...].firstIndex(of: "\"") {
+                let numberRange = afterQuoteStart..<quoteEnd
                 phoneNumber = String(afterClip[numberRange])
             }
         }
@@ -558,13 +560,6 @@ extension CallManagerImpl: AudioPipelineDelegate {
     func audioPipeline(_ pipeline: AudioPipelineManager, didDecodeDownlinkPcm pcm: Data) {
         callRecorder.feedDownlinkPcm(pcm)
     }
-}
-
-// MARK: - Service ID
-
-/// 服务 ID 常量
-struct ServiceId {
-    static let SPP_VOICE: UInt8 = 0x01
 }
 
 // MARK: - Call Manager Error

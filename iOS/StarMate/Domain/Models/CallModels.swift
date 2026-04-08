@@ -19,6 +19,11 @@ enum CallState: Equatable {
         }
     }
 
+    var isIncoming: Bool {
+        if case .incoming = self { return true }
+        return false
+    }
+
     var phoneNumber: String? {
         switch self {
         case .dialing(let num), .incoming(let num), .connected(let num, _):
@@ -99,14 +104,6 @@ enum DtmfKey: String, CaseIterable {
 enum AudioMode: String, Codable {
     case speaker
     case earpiece
-}
-
-// MARK: - Voice Packet
-/// Voice data packet for GATT Voice Service
-struct VoicePacket: Equatable {
-    let data: Data
-    let timestamp: Date
-    let sequenceNumber: Int
 }
 
 // MARK: - Call Record

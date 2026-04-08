@@ -43,6 +43,9 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
     /// 当从 BLE 接收到 AMR 数据时触发，回调 raw AMR 帧 (无文件头)
     var onAmrFrameReceived: ((Data) -> Void)?
 
+    /// 通话录音器 (由 BleManager 注入)
+    var callRecorder: CallRecorderImpl?
+
     // MARK: - Streams
 
     private var voiceDataStreamContinuation: AsyncStream<VoicePacket>.Continuation?
@@ -137,6 +140,8 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
 
     func onGattClosed() {
         clearGattReferences()
+        receiveBuffer.removeAll()
+        voiceDataStreamContinuation?.finish()
     }
 
     // MARK: - Notification Handling
@@ -261,7 +266,7 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
 
             // 移除已处理的数据包 (包括结束引号)
             let packetEnd = buffer.index(after: endQuoteRange)
-            receiveBuffer = buffer.dropFirst(packetEnd.count)
+            receiveBuffer = buffer.dropFirst(packetEnd)
 
             // 解码 base64 并回调
             if let base64String = String(data: base64Data, encoding: .utf8),
@@ -299,6 +304,33 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
         print("  - Frames received: \(framesReceived)")
         print("  - Bytes sent: \(bytesSent)")
         print("  - Bytes received: \(bytesReceived)")
+    }
+
+    // MARK: - Protocol Stubs (not implemented - handled by AudioPipelineManager)
+
+    func startRecording() async -> Result<Void, Error> {
+        // Recording is handled by AudioPipelineManager
+        return .success(())
+    }
+
+    func stopRecording() async -> Result<Void, Error> {
+        // Recording is handled by AudioPipelineManager
+        return .success(())
+    }
+
+    func startPlaying() async -> Result<Void, Error> {
+        // Playback is handled by AudioPipelineManager
+        return .success(())
+    }
+
+    func stopPlaying() async -> Result<Void, Error> {
+        // Playback is handled by AudioPipelineManager
+        return .success(())
+    }
+
+    func setAudioMode(_ mode: AudioMode) async -> Result<Void, Error> {
+        // Audio mode is handled by AudioPipelineManager
+        return .success(())
     }
 }
 

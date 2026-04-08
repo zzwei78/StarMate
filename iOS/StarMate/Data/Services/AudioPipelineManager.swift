@@ -89,7 +89,10 @@ final class AudioPipelineManager: AudioPipelineProtocol {
     }
 
     deinit {
-        cleanup()
+        // cleanup() is @MainActor-isolated, run on main actor
+        Task { @MainActor in
+            cleanup()
+        }
     }
 
     // MARK: - Setup

@@ -128,7 +128,7 @@ final class AmrNbEncoder {
                 return Data()
             }
 
-            return Data(bytes: outBuffer, count: size)
+            return Data(bytes: outBuffer, count: Int(size))
         }
     }
 
@@ -148,7 +148,7 @@ final class AmrNbEncoder {
 
         guard size > 0 else { return Data() }
 
-        return Data(bytes: outBuffer, count: size)
+        return Data(bytes: outBuffer, count: Int(size))
     }
 }
 

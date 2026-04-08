@@ -25,7 +25,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
 
     @Published private(set) var simState: SimState = .unknown
     @Published private(set) var basebandVersion: BasebandVersion?
-    @Published private(set) var networkRegState: NetworkRegState = .unknown
+    @Published private(set) var networkRegState: NetworkRegistrationStatus = .unknown
     @Published private(set) var signalInfo: SignalInfo?
 
     // MARK: - Dependencies
@@ -73,14 +73,18 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
 
         if upper.contains("+CPIN: READY") {
             return .ready
-        } else if upper.contains("+CPIN: SIM PIN") || upper.contains("+CPIN: SIM PIN2") {
-            return .pinRequired
-        } else if upper.contains("+CPIN: SIM PUK") || upper.contains("+CPIN: SIM PUK2") {
-            return .pukRequired
+        } else if upper.contains("+CPIN: SIM PIN") {
+            return .simPinRequired(remainingAttempts: -1)
+        } else if upper.contains("+CPIN: SIM PIN2") {
+            return .simPin2Required(remainingAttempts: -1)
+        } else if upper.contains("+CPIN: SIM PUK") {
+            return .simPukRequired(remainingAttempts: -1)
+        } else if upper.contains("+CPIN: SIM PUK2") {
+            return .simPuk2Required(remainingAttempts: -1)
         } else if upper.contains("+CPIN: NOT INSERTED") || upper.contains("+CPIN: NOT READY") {
-            return .notPresent
+            return .absent
         } else if upper.contains("+CPIN: PH-NET PIN") || upper.contains("+CPIN: PH-NETSUB PIN") {
-            return .error
+            return .phSimPinRequired(remainingAttempts: -1)
         } else if upper.contains("+CME ERROR") {
             return .error
         }
@@ -166,7 +170,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
             let cleaned = imei.replacingOccurrences(of: " ", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
 
             if cleaned.count >= 15 {
-                await updateBasebandVersion { $0.imei = cleaned }
+                await updateBasebandVersion(imei: cleaned)
                 return .success(cleaned)
             }
 
@@ -186,7 +190,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
             let imsi = response.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if imsi.count >= 15 {
-                await updateBasebandVersion { $0.imsi = imsi }
+                await updateBasebandVersion(imsi: imsi)
                 return .success(imsi)
             }
 
@@ -212,7 +216,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
             let cleaned = iccid.replacingOccurrences(of: " ", with: "")
 
             if cleaned.count >= 19 {
-                await updateBasebandVersion { $0.iccid = cleaned }
+                await updateBasebandVersion(ccid: cleaned)
                 return .success(cleaned)
             }
 
@@ -232,7 +236,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
             let version = response.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if !version.isEmpty {
-                await updateBasebandVersion { $0.swVersion = version }
+                await updateBasebandVersion(softwareVersion: version)
                 return .success(version)
             }
 
@@ -249,22 +253,25 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
         async let imeiResult = getIMEI()
         async let imsiResult = getIMSI()
         async let iccidResult = getICCID()
-        async let versionResult = getBasebandSwVersion()
+        async let swVersionResult = getBasebandSwVersion()
+        async let hwVersionResult = atClient.sendCommand("AT+CGMM")  // 获取型号
 
-        let imei = try? imeiResult.get()
-        let imsi = try? imsiResult.get()
-        let iccid = try? iccidResult.get()
-        let version = try? versionResult.get()
+        let imei = (try? await imeiResult.get()) ?? ""
+        let imsi = (try? await imsiResult.get()) ?? ""
+        let ccid = (try? await iccidResult.get()) ?? ""
+        let softwareVersion = (try? await swVersionResult.get()) ?? ""
+        let model = (try? await hwVersionResult.get()).map { extractValue(from: $0, prefix: "") } ?? ""
+        let hardwareVersion = ""
+        let manufacturer = ""
 
         let baseband = BasebandVersion(
-            swVersion: version ?? "",
-            hwVersion: nil,
-            manufacturer: nil,
-            model: nil,
-            revision: nil,
             imei: imei,
             imsi: imsi,
-            iccid: iccid
+            ccid: ccid,
+            softwareVersion: softwareVersion,
+            hardwareVersion: hardwareVersion,
+            model: model,
+            manufacturer: manufacturer
         )
 
         await MainActor.run {
@@ -277,12 +284,12 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
     // MARK: - Network
 
     /// 获取网络注册状态
-    func getNetworkRegState() async -> Result<NetworkRegState, Error> {
+    func getNetworkRegistrationStatus() async -> Result<NetworkRegistrationStatus, Error> {
         let result = await atClient.sendCommand("AT+CREG?")
 
         switch result {
         case .success(let response):
-            let state = parseNetworkRegState(response)
+            let state = parseNetworkRegistrationStatus(response)
             await MainActor.run {
                 self.networkRegState = state
             }
@@ -294,7 +301,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
     }
 
     /// 解析网络注册状态
-    private func parseNetworkRegState(_ response: String) -> NetworkRegState {
+    private func parseNetworkRegistrationStatus(_ response: String) -> NetworkRegistrationStatus {
         // +CREG: <n>,<stat>[,<lac>,<ci>]
         // stat: 0=未注册, 1=已注册本地, 2=正在搜索, 3=注册被拒绝, 4=未知, 5=已注册漫游
 
@@ -318,7 +325,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
         case 0:
             return .notRegistered
         case 1:
-            return .registeredHome
+            return .registered(isRoaming: false)
         case 2:
             return .searching
         case 3:
@@ -326,7 +333,7 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
         case 4:
             return .unknown
         case 5:
-            return .registeredRoaming
+            return .registered(isRoaming: true)
         default:
             return .unknown
         }
@@ -371,20 +378,36 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
             return nil
         }
 
-        return SignalInfo(rssi: rssi, ber: ber)
+        // Convert RSSI (0-31) to strength (0-5 bars)
+        let strength: Int
+        if rssi == 99 {
+            strength = 0
+        } else if rssi >= 20 {
+            strength = 5
+        } else if rssi >= 15 {
+            strength = 4
+        } else if rssi >= 10 {
+            strength = 3
+        } else if rssi >= 5 {
+            strength = 2
+        } else {
+            strength = 1
+        }
+
+        return SignalInfo(strength: strength, ber: ber, isRegistered: false, regStatus: 0)
     }
 
     // MARK: - Convenience
 
     /// 是否准备好拨打电话
     func isReadyForCall() -> Bool {
-        return simState.canMakeCall
+        return simState.isReady
     }
 
     /// 刷新所有状态
     func refreshAllStatus() async {
         async let simResult = getSimState()
-        async let networkResult = getNetworkRegState()
+        async let networkResult = getNetworkRegistrationStatus()
         async let signalResult = getSignalInfo()
 
         // 等待所有完成
@@ -437,20 +460,35 @@ final class SatellitePhoneManagerImpl: SatellitePhoneManagerProtocol, Observable
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// 更新 basebandVersion
-    private func updateBasebandVersion(_ update: (inout BasebandVersion) -> Void) async {
-        var current = basebandVersion ?? BasebandVersion(
-            swVersion: "",
-            hwVersion: nil,
-            manufacturer: nil,
-            model: nil,
-            revision: nil,
-            imei: nil,
-            imsi: nil,
-            iccid: nil
+    /// 更新 basebandVersion 的单个字段
+    private func updateBasebandVersion(
+        imei: String? = nil,
+        imsi: String? = nil,
+        ccid: String? = nil,
+        softwareVersion: String? = nil,
+        hardwareVersion: String? = nil,
+        model: String? = nil,
+        manufacturer: String? = nil
+    ) async {
+        let current = basebandVersion ?? BasebandVersion(
+            imei: "",
+            imsi: "",
+            ccid: "",
+            softwareVersion: "",
+            hardwareVersion: "",
+            model: "",
+            manufacturer: ""
         )
-        update(&current)
-        basebandVersion = current
+
+        basebandVersion = BasebandVersion(
+            imei: imei ?? current.imei,
+            imsi: imsi ?? current.imsi,
+            ccid: ccid ?? current.ccid,
+            softwareVersion: softwareVersion ?? current.softwareVersion,
+            hardwareVersion: hardwareVersion ?? current.hardwareVersion,
+            model: model ?? current.model,
+            manufacturer: manufacturer ?? current.manufacturer
+        )
     }
 }
 
@@ -489,14 +527,14 @@ extension SatellitePhoneManagerImpl {
         print("[SatellitePhoneManager] Status:")
         print("  - SIM State: \(simState)")
         print("  - Network State: \(networkRegState)")
-        print("  - Signal: \(signalInfo?.signalDescription ?? "未知") (RSSI: \(signalInfo?.rssi ?? 99))")
+        print("  - Signal Strength: \(signalInfo?.strength ?? 0)")
         print("  - Ready for call: \(isReadyForCall())")
 
         if let baseband = basebandVersion {
-            print("  - IMEI: \(baseband.imei ?? "N/A")")
-            print("  - IMSI: \(baseband.imsi ?? "N/A")")
-            print("  - ICCID: \(baseband.iccid ?? "N/A")")
-            print("  - SW Version: \(baseband.swVersion)")
+            print("  - IMEI: \(baseband.imei.isEmpty ? "N/A" : baseband.imei)")
+            print("  - IMSI: \(baseband.imsi.isEmpty ? "N/A" : baseband.imsi)")
+            print("  - ICCID: \(baseband.ccid.isEmpty ? "N/A" : baseband.ccid)")
+            print("  - SW Version: \(baseband.softwareVersion)")
         }
     }
 }

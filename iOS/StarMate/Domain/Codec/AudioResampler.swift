@@ -89,8 +89,8 @@ final class AudioResampler {
 
             if let cvt = converter {
                 // 优化转换质量
-                cvt.sampleRateConverterQuality = .medium
-                cvt.sampleRateConverterAlgorithm = .normal
+                cvt.sampleRateConverterQuality = AVAudioQuality.medium.rawValue
+                // sampleRateConverterAlgorithm is read-only, set quality instead
 
                 print("[AudioResampler] Created converter: \(Int(inputFormat.sampleRate))Hz → \(Int(TargetAudioFormat.sampleRate))Hz")
             }
