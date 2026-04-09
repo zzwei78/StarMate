@@ -45,6 +45,11 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
     private var callTimer: Timer?
     private var urcTask: Task<Void, Never>?
 
+    #if DEBUG
+    private var uplinkPcmCount = 0
+    private var frameCount = 0
+    #endif
+
     // MARK: - Initialization
 
     init(
@@ -400,22 +405,26 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         print("[CallManager] Starting audio pipeline...")
 
         // 启动录音
+        print("[CallManager] → Starting recording...")
         let recordResult = await audioPipeline.startRecording()
         switch recordResult {
         case .success:
-            break
+            print("[CallManager] ✅ Recording started")
         case .failure(let error):
+            print("[CallManager] ❌ Recording failed: \(error)")
             throw error
         }
 
         // 启动播放
+        print("[CallManager] → Starting playback...")
         let playResult = await audioPipeline.startPlaying()
         switch playResult {
         case .success:
-            print("[CallManager] ✅ Audio pipeline started")
+            print("[CallManager] ✅ Audio pipeline started (recording + playing)")
         case .failure(let error):
             // 停止录音
             _ = await audioPipeline.stopRecording()
+            print("[CallManager] ❌ Playback failed: \(error)")
             throw error
         }
     }
@@ -547,13 +556,31 @@ extension CallManagerImpl: AudioPipelineDelegate {
     func audioPipeline(_ pipeline: AudioPipelineManager, didEncodeAmrFrame frame: Data) {
         // 发送 AMR 帧到设备
         Task {
-            _ = await voiceClient.sendAmrFrame(frame)
+            let result = await voiceClient.sendAmrFrame(frame)
+            switch result {
+            case .success:
+                #if DEBUG
+                frameCount += 1
+                if frameCount % 50 == 0 {  // 每50帧打印一次，约1秒
+                    print("[CallManager] 📤 Sent AMR frames: \(frameCount) (size: \(frame.count)B)")
+                }
+                #endif
+            case .failure(let error):
+                print("[CallManager] ❌ Failed to send AMR frame: \(error.localizedDescription)")
+            }
         }
     }
 
     /// 上行 PCM 已采集 (送给录音器)
     func audioPipeline(_ pipeline: AudioPipelineManager, didCaptureUplinkPcm pcm: Data) {
         callRecorder.feedUplinkPcm(pcm)
+
+        #if DEBUG
+        uplinkPcmCount += 1
+        if uplinkPcmCount % 250 == 0 {  // 每5秒
+            print("[CallManager] 🎙️ Uplink PCM: \(uplinkPcmCount) frames recorded")
+        }
+        #endif
     }
 
     /// 下行 PCM 已解码 (送给录音器)

@@ -42,6 +42,11 @@ final class CallRecorderImpl: CallRecorderProtocol {
 
     private var recordingTask: Task<Void, Never>?
 
+    #if DEBUG
+    private var uplinkFrameCount = 0
+    private var downlinkFrameCount = 0
+    #endif
+
     private var recordingsDir: URL {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let recordingsPath = documentsPath.appendingPathComponent("CallRecordings")
@@ -65,6 +70,13 @@ final class CallRecorderImpl: CallRecorderProtocol {
         while uplinkQueue.count > Constants.MAX_QUEUE_FRAMES {
             _ = uplinkQueue.pop()
         }
+
+        #if DEBUG
+        uplinkFrameCount += 1
+        if uplinkFrameCount % 250 == 0 {  // 每5秒
+            print("[CallRecorder] 📤 Uplink frames: \(uplinkFrameCount), queue: \(uplinkQueue.count)")
+        }
+        #endif
     }
 
     func feedDownlinkPcm(_ data: Data) {
@@ -86,6 +98,13 @@ final class CallRecorderImpl: CallRecorderProtocol {
             while downlinkQueue.count > Constants.MAX_QUEUE_FRAMES {
                 _ = downlinkQueue.pop()
             }
+
+            #if DEBUG
+            downlinkFrameCount += 1
+            if downlinkFrameCount % 250 == 0 {  // 每5秒
+                print("[CallRecorder] 📥 Downlink frames: \(downlinkFrameCount), queue: \(downlinkQueue.count)")
+            }
+            #endif
         }
 
         if !remaining.isEmpty {
@@ -99,6 +118,8 @@ final class CallRecorderImpl: CallRecorderProtocol {
     /// Start recording a new call
     func startRecording() async {
         guard !active else { return }
+
+        print("[CallRecorder] 🎙️ Starting call recording...")
 
         // Clear queues
         uplinkQueue.clear()
@@ -131,15 +152,19 @@ final class CallRecorderImpl: CallRecorderProtocol {
                 await self?.runMixer()
             }
 
-            print("[CallRecorder] Recording started: \(filePath.path)")
+            print("[CallRecorder] ✅ Recording started: \(filePath.path)")
+            print("[CallRecorder]    - Format: \(Constants.SAMPLE_RATE)Hz, \(Constants.CHANNELS)ch, \(Constants.BITS_PER_SAMPLE)bit")
+            print("[CallRecorder]    - Frame size: \(Constants.PCM_FRAME_SIZE) bytes (\(Constants.FRAME_DURATION_MS)ms)")
         } catch {
-            print("[CallRecorder] Failed to start recording: \(error)")
+            print("[CallRecorder] ❌ Failed to start recording: \(error)")
         }
     }
 
     /// Stop recording and finalize WAV file
     func stopRecording() async {
         guard active else { return }
+
+        print("[CallRecorder] 🛑 Stopping recording...")
 
         active = false
         recordingTask?.cancel()
@@ -160,11 +185,14 @@ final class CallRecorderImpl: CallRecorderProtocol {
 
                 try updatedData.write(to: filePath)
 
-                print("[CallRecorder] Recording stopped, wrote \(totalPcmBytesWritten) bytes PCM")
-                print("[CallRecorder] File saved: \(filePath.path)")
+                let duration = Double(totalPcmBytesWritten) / Double(Constants.SAMPLE_RATE * Constants.BYTES_PER_SAMPLE)
+                print("[CallRecorder] ✅ Recording stopped")
+                print("[CallRecorder]    - Duration: \(String(format: "%.1f", duration))s")
+                print("[CallRecorder]    - PCM bytes: \(totalPcmBytesWritten)")
+                print("[CallRecorder]    - File: \(filePath.path)")
             }
         } catch {
-            print("[CallRecorder] Failed to finalize WAV: \(error)")
+            print("[CallRecorder] ❌ Failed to finalize WAV: \(error)")
         }
 
         outputFile = nil
@@ -176,7 +204,11 @@ final class CallRecorderImpl: CallRecorderProtocol {
     private func runMixer() async {
         let silence = Data(repeating: 0, count: Constants.PCM_FRAME_SIZE)
         var frameIndex = 0
+        var uplinkSilentFrames = 0
+        var downlinkSilentFrames = 0
         let startNanos = Date().millisecondsSinceEpoch
+
+        print("[CallRecorder] 🎚️ Mixer started")
 
         while active && !Task.isCancelled {
             let elapsedMs = Date().millisecondsSinceEpoch - startNanos
@@ -191,6 +223,10 @@ final class CallRecorderImpl: CallRecorderProtocol {
             let uplink = uplinkQueue.pop() ?? silence
             let downlink = downlinkQueue.pop() ?? silence
 
+            // Track silent frames
+            if uplink == silence { uplinkSilentFrames += 1 }
+            if downlink == silence { downlinkSilentFrames += 1 }
+
             // Mix frames
             let mixed = mixFrames(uplink, downlink)
 
@@ -201,9 +237,14 @@ final class CallRecorderImpl: CallRecorderProtocol {
             }
 
             frameIndex += 1
+
+            // Log every 5 seconds
+            if frameIndex % 250 == 0 {
+                print("[CallRecorder] 🎙️ Recorded \(frameIndex) frames (\(frameIndex * 20 / 1000)s), uplink silence: \(uplinkSilentFrames), downlink silence: \(downlinkSilentFrames)")
+            }
         }
 
-        print("[CallRecorder] Mixer stopped after \(frameIndex) frames")
+        print("[CallRecorder] 🎚️ Mixer stopped after \(frameIndex) frames")
     }
 
     /// Mix two PCM frames: (a + b) / 2 with 16-bit clamp

@@ -205,6 +205,64 @@ struct SettingsView: View {
                     )
                 }
 
+                // 音频测试 (临时 - 已屏蔽)
+                /*
+                SettingsSection(title: "音频测试") {
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text("测试状态")
+                                .font(.body)
+                            Spacer()
+                            Text(viewModel.isTestRecording ? viewModel.testRecordingDuration : "未开始")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                Task { await viewModel.startTestRecording() }
+                            }) {
+                                HStack {
+                                    Image(systemName: "record.circle")
+                                        .foregroundColor(viewModel.isTestRecording ? .red : .green)
+                                    Text("录音")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .disabled(viewModel.isTestRecording)
+                            .buttonStyle(.bordered)
+
+                            Button(action: {
+                                Task { await viewModel.stopTestRecording() }
+                            }) {
+                                HStack {
+                                    Image(systemName: "stop.circle")
+                                        .foregroundColor(.red)
+                                    Text("停止")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .disabled(!viewModel.isTestRecording)
+                            .buttonStyle(.bordered)
+                        }
+
+                        if viewModel.testAmrFramesEncoded > 0 || viewModel.testAmrFramesDecoded > 0 {
+                            HStack {
+                                Text("编解码测试:")
+                                    .font(.caption)
+                                Text("编码 \(viewModel.testAmrFramesEncoded) 帧")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                Text("解码 \(viewModel.testAmrFramesDecoded) 帧")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                */
+
                 // 关于
                 SettingsSection(title: "关于") {
                     SettingsInfoItem(title: "版本", value: "1.0.0")

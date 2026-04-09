@@ -81,6 +81,10 @@ final class AudioPipelineManager: AudioPipelineProtocol {
     /// 播放定时器
     private var playbackTimer: Timer?
 
+    #if DEBUG
+    private var encodeFrameCount = 0
+    #endif
+
     // MARK: - Initialization
 
     init() {
@@ -106,12 +110,15 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         let mainMixer = audioEngine.mainMixerNode
         audioEngine.connect(playerNode, to: mainMixer, format: targetFormat)
 
-        print("[AudioPipelineManager] Audio engine configured")
+        print("[AudioPipeline] ✅ Audio engine configured")
+        print("[AudioPipeline]    - Target format: \(TargetAudioFormat.sampleRate)Hz, \(TargetAudioFormat.channels)ch, Int16")
     }
 
     /// 配置音频会话
     private func configureAudioSession(mode: AudioMode) throws {
         let session = AVAudioSession.sharedInstance()
+
+        print("[AudioPipeline] 🔧 Configuring audio session for \(mode)...")
 
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: [
             .allowBluetooth,
@@ -135,7 +142,10 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             try session.overrideOutputAudioPort(.speaker)
         }
 
-        print("[AudioPipelineManager] Audio session configured for \(mode)")
+        print("[AudioPipeline] ✅ Audio session configured: \(mode)")
+        print("[AudioPipeline]    - Category: \(session.category)")
+        print("[AudioPipeline]    - SampleRate: \(session.sampleRate)Hz")
+        print("[AudioPipeline]    - IOBufferDuration: \(session.ioBufferDuration)s")
     }
 
     // MARK: - Recording (Uplink)
@@ -143,11 +153,13 @@ final class AudioPipelineManager: AudioPipelineProtocol {
     /// 开始录音
     func startRecording() async -> Result<Void, Error> {
         guard !isRecording else {
-            print("[AudioPipelineManager] ⚠️ Already recording")
+            print("[AudioPipeline] ⚠️ Already recording")
             return .success(())
         }
 
         do {
+            print("[AudioPipeline] 🎤 Starting recording...")
+
             // 配置音频会话
             try configureAudioSession(mode: currentMode)
 
@@ -160,7 +172,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             let inputNode = audioEngine.inputNode
             let inputFormat = inputNode.outputFormat(forBus: 0)
 
-            print("[AudioPipelineManager] Input format: \(inputFormat)")
+            print("[AudioPipeline] 📊 Input format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount)ch, \(inputFormat.commonFormat)")
 
             // 安装 tap 捕获音频
             // 注意: tap 回调在实时音频线程上执行，需要调度到主线程
@@ -178,12 +190,14 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             }
 
             isRecording = true
-            print("[AudioPipelineManager] ✅ Recording started")
+            print("[AudioPipeline] ✅ Recording started")
+            print("[AudioPipeline]    - Buffer size: \(Constants.audioBufferSize) frames")
+            print("[AudioPipeline]    - Delegate set: \(delegate != nil)")
 
             return .success(())
 
         } catch {
-            print("[AudioPipelineManager] ❌ Failed to start recording: \(error)")
+            print("[AudioPipeline] ❌ Failed to start recording: \(error)")
             return .failure(error)
         }
     }
@@ -239,8 +253,16 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             let amrFrame = amrEncoder.encode(pcmData: pcmFrame)
 
             guard !amrFrame.isEmpty else {
+                print("[AudioPipeline] ⚠️ AMR encoding failed, empty frame")
                 continue
             }
+
+            #if DEBUG
+            encodeFrameCount += 1
+            if encodeFrameCount % 250 == 0 {  // 每5秒
+                print("[AudioPipeline] 🔊 Encoded AMR frames: \(encodeFrameCount), size: \(amrFrame.count)B")
+            }
+            #endif
 
             // 3c. 回调 AMR 帧 (发送给设备)
             delegate?.audioPipeline(self, didEncodeAmrFrame: amrFrame)
@@ -313,6 +335,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         let pcmData = amrDecoder.decode(amrData: amrData)
 
         guard !pcmData.isEmpty else {
+            print("[AudioPipeline] ⚠️ AMR decoding failed, empty PCM")
             return
         }
 
@@ -328,7 +351,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         if playbackQueue.count > maxQueueSize {
             let excess = playbackQueue.count - maxQueueSize
             playbackQueue.removeFirst(excess)
-            print("[AudioPipelineManager] ⚠️ Playback queue overflow, dropped \(excess) bytes")
+            print("[AudioPipeline] ⚠️ Playback queue overflow, dropped \(excess) bytes")
         }
         playbackLock.unlock()
     }

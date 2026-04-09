@@ -95,34 +95,38 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
     func setPeripheral(_ peripheral: CBPeripheral, characteristics: [CBCharacteristic]) {
         self.peripheral = peripheral
 
+        print("[VoiceService] 🔧 Setting up peripheral with \(characteristics.count) characteristics")
+
         for char in characteristics {
             switch char.uuid {
             case BleUuid.VOICE_IN:
                 voiceInChar = char
-                print("[VoiceServiceClient] ✅ VOICE_IN characteristic found (0xABEE)")
+                print("[VoiceService] ✅ VOICE_IN characteristic found (\(char.uuid.uuidString))")
 
             case BleUuid.VOICE_OUT:
                 voiceOutChar = char
                 // 启用通知以接收下行数据
                 peripheral.setNotifyValue(true, for: char)
-                print("[VoiceServiceClient] ✅ VOICE_OUT characteristic found, notifications enabled (0xABEF)")
+                print("[VoiceService] ✅ VOICE_OUT characteristic found, notifications enabled (\(char.uuid.uuidString))")
 
             case BleUuid.VOICE_DATA:
                 voiceDataChar = char
                 // 启用通知
                 peripheral.setNotifyValue(true, for: char)
-                print("[VoiceServiceClient] ✅ VOICE_DATA characteristic found (0xABF1)")
+                print("[VoiceService] ✅ VOICE_DATA characteristic found (\(char.uuid.uuidString))")
 
             default:
-                break
+                print("[VoiceService] ⚠️ Unknown characteristic: \(char.uuid.uuidString)")
             }
         }
 
         // 如果没有 VOICE_IN，使用 VOICE_DATA 作为备用
         if voiceInChar == nil && voiceDataChar != nil {
             voiceInChar = voiceDataChar
-            print("[VoiceServiceClient] ⚠️ Using VOICE_DATA as fallback for VOICE_IN")
+            print("[VoiceService] ⚠️ Using VOICE_DATA as fallback for VOICE_IN")
         }
+
+        print("[VoiceService] 📊 Setup complete - IN: \(voiceInChar != nil), OUT: \(voiceOutChar != nil), DATA: \(voiceDataChar != nil)")
     }
 
     /// 清除 GATT 引用 (断开连接时调用)
@@ -173,7 +177,7 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
     func sendAmrFrame(_ amrData: Data) async -> Result<Void, Error> {
         guard let peripheral = peripheral else {
             let error = VoiceServiceError.notConnected
-            print("[VoiceServiceClient] ❌ Send failed: \(error)")
+            print("[VoiceService] ❌ Send failed: \(error)")
             return .failure(error)
         }
 
@@ -181,21 +185,21 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
         let char = voiceInChar ?? voiceDataChar
         guard let characteristic = char else {
             let error = VoiceServiceError.characteristicNotFound
-            print("[VoiceServiceClient] ❌ Send failed: \(error)")
+            print("[VoiceService] ❌ Send failed: \(error)")
             return .failure(error)
         }
 
         // 包装为 AT^AUDPCM="<base64>"
         guard let packet = wrapAmrFrame(amrData) else {
             let error = VoiceServiceError.encodingFailed
-            print("[VoiceServiceClient] ❌ Send failed: \(error)")
+            print("[VoiceService] ❌ Send failed: \(error)")
             return .failure(error)
         }
 
         // 检查包大小
         guard packet.count <= Constants.maxPacketSize else {
             let error = VoiceServiceError.packetTooLarge(packet.count)
-            print("[VoiceServiceClient] ❌ Send failed: \(error)")
+            print("[VoiceService] ❌ Send failed: \(error)")
             return .failure(error)
         }
 
@@ -206,6 +210,12 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
         framesSent += 1
         bytesSent += packet.count
         sequenceCounter += 1
+
+        #if DEBUG
+        if framesSent % 50 == 0 {  // 每1秒
+            print("[VoiceService] 📤 BLE write: frame #\(framesSent), packet size: \(packet.count)B")
+        }
+        #endif
 
         return .success(())
     }
@@ -278,10 +288,10 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
 
                 // 日志 (每 50 帧打印一次)
                 if framesReceived % 50 == 0 {
-                    print("[VoiceServiceClient] 📥 Received frame #\(framesReceived), size: \(amrData.count) bytes")
+                    print("[VoiceService] 📥 Received AMR frames: \(framesReceived) (size: \(amrData.count)B)")
                 }
             } else {
-                print("[VoiceServiceClient] ⚠️ Failed to decode base64 data")
+                print("[VoiceService] ⚠️ Failed to decode base64 data")
             }
         }
     }

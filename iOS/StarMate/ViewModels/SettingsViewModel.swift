@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import AVFoundation
 
 @MainActor
 class SettingsViewModel: ObservableObject {
@@ -286,6 +287,33 @@ class SettingsViewModel: ObservableObject {
     func resetOtaState() {
         otaClient.resetOtaState()
     }
+
+    // MARK: - Audio Testing (临时测试功能 - 已屏蔽)
+
+    /*
+    // 测试相关属性
+    @Published var isTestRecording: Bool = false
+    @Published var testRecordingDuration: String = "0.0s"
+    @Published var testAmrFramesEncoded: Int = 0
+    @Published var testAmrFramesDecoded: Int = 0
+    @Published var testAudioLevel: Float = 0.0
+    @Published var testFilePath: String?
+
+    private var testRecordingTimer: Timer?
+    private var testRecordingStartTime: Date?
+    private var testAudioEngine: AVAudioEngine?
+    private var testAudioFormat: AVAudioFormat?
+    private var testAudioPlayer: AVAudioPlayer?
+    private var testAudioConverter: AVAudioConverter?
+    private var testAmrEncoder: AmrNbEncoder?
+    private var testPcm8kHzBuffer: Data = Data()
+    private var testAmrData: Data = Data()
+    private let testPcmFrameSize: Int = 320
+
+    // 测试录音相关函数已屏蔽...
+    */
+
+    // MARK: - Utility
 
     // MARK: - Utility
 

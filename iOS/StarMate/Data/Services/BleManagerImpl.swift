@@ -513,6 +513,7 @@ extension BleManagerImpl: CBPeripheralDelegate {
             } else if service.uuid == BleUuid.AT_SERVICE {
                 atServiceClient.setPeripheral(peripheral, characteristics: characteristics)
             } else if service.uuid == BleUuid.VOICE_SERVICE {
+                print("[BLE] 🎙️ Setting up VoiceServiceClient with \(characteristics.count) characteristics")
                 voiceServiceClient.setPeripheral(peripheral, characteristics: characteristics)
             } else if service.uuid == BleUuid.OTA_SERVICE {
                 otaServiceClient.setPeripheral(peripheral, characteristics: characteristics)
