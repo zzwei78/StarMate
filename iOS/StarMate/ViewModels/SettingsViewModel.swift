@@ -22,6 +22,10 @@ class SettingsViewModel: ObservableObject {
     @Published var error: String?
     @Published var message: String?
 
+    // MARK: - Audio Test Manager
+
+    let audioTestManager: AudioTestManager
+
     // MARK: - Dependencies
 
     private let bleManager: BleManagerImpl
@@ -50,6 +54,10 @@ class SettingsViewModel: ObservableObject {
     init(bleManager: BleManagerImpl, recordingPreferences: RecordingPreferences = .shared) {
         self.bleManager = bleManager
         self.recordingPreferences = recordingPreferences
+
+        // 初始化音频测试管理器
+        let voiceClient = bleManager.getVoiceClient() as? VoiceServiceClientImpl
+        self.audioTestManager = AudioTestManager(voiceClient: voiceClient)
 
         setupBindings()
     }

@@ -43,6 +43,7 @@
 		04C888152F849647003186B3 /* RecordingPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888132F849647003186B3 /* RecordingPreferences.swift */; };
 		04C888B42F872E69003186B3 /* SatellitePhoneManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888B32F872E69003186B3 /* SatellitePhoneManagerImpl.swift */; };
 		04C888B52F872E69003186B3 /* AudioPipelineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888B12F872E69003186B3 /* AudioPipelineManager.swift */; };
+		12F28B468880466FB511BA82 /* AudioTestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B027DDE813C8419382CB1529 /* AudioTestManager.swift */; };
 		04C888B62F872E69003186B3 /* CallManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888B22F872E69003186B3 /* CallManagerImpl.swift */; };
 		04C888BD2F872E9F003186B3 /* AudioResampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888BB2F872E9F003186B3 /* AudioResampler.swift */; };
 		04C888BE2F872E9F003186B3 /* AmrNbCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888BA2F872E9F003186B3 /* AmrNbCodec.swift */; };
@@ -90,6 +91,7 @@
 		04C888102F84960A003186B3 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		04C888132F849647003186B3 /* RecordingPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingPreferences.swift; sourceTree = "<group>"; };
 		04C888B12F872E69003186B3 /* AudioPipelineManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPipelineManager.swift; sourceTree = "<group>"; };
+		B027DDE813C8419382CB1529 /* AudioTestManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTestManager.swift; sourceTree = "<group>";};
 		04C888B22F872E69003186B3 /* CallManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManagerImpl.swift; sourceTree = "<group>"; };
 		04C888B32F872E69003186B3 /* SatellitePhoneManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SatellitePhoneManagerImpl.swift; sourceTree = "<group>"; };
 		04C888B72F872E9F003186B3 /* interf_dec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = interf_dec.h; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 			isa = PBXGroup;
 			children = (
 				04C888B12F872E69003186B3 /* AudioPipelineManager.swift */,
+				B027DDE813C8419382CB1529 /* AudioTestManager.swift */,
 				04C888B22F872E69003186B3 /* CallManagerImpl.swift */,
 				04C888B32F872E69003186B3 /* SatellitePhoneManagerImpl.swift */,
 				047017B02F7F71BE00F322AC /* AtServiceClientImpl.swift */,
@@ -420,6 +423,7 @@
 				047017892F7F6E0700F322AC /* AtModels.swift in Sources */,
 				04C888B42F872E69003186B3 /* SatellitePhoneManagerImpl.swift in Sources */,
 				04C888B52F872E69003186B3 /* AudioPipelineManager.swift in Sources */,
+				12F28B468880466FB511BA82 /* AudioTestManager.swift in Sources */,
 				04C888B62F872E69003186B3 /* CallManagerImpl.swift in Sources */,
 				0470178A2F7F6E0700F322AC /* SystemPacketBuilder.swift in Sources */,
 				04C888BD2F872E9F003186B3 /* AudioResampler.swift in Sources */,

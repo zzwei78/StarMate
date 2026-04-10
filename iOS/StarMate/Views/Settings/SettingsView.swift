@@ -205,63 +205,78 @@ struct SettingsView: View {
                     )
                 }
 
-                // 音频测试 (临时 - 已屏蔽)
-                /*
+                // 音频测试
                 SettingsSection(title: "音频测试") {
                     VStack(spacing: 12) {
-                        HStack {
-                            Text("测试状态")
-                                .font(.body)
-                            Spacer()
-                            Text(viewModel.isTestRecording ? viewModel.testRecordingDuration : "未开始")
-                                .font(.body)
+                        // 测试 1: 播放测试音频
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("AMR-NB 测试音频")
+                                .font(.subheadline)
                                 .foregroundColor(.secondary)
-                        }
 
-                        HStack(spacing: 12) {
                             Button(action: {
-                                Task { await viewModel.startTestRecording() }
+                                viewModel.audioTestManager.playTestAmrAudio()
                             }) {
                                 HStack {
-                                    Image(systemName: "record.circle")
-                                        .foregroundColor(viewModel.isTestRecording ? .red : .green)
-                                    Text("录音")
+                                    Image(systemName: viewModel.audioTestManager.isPlayingTestAudio ? "stop.circle.fill" : "play.circle.fill")
+                                        .foregroundColor(viewModel.audioTestManager.isPlayingTestAudio ? .red : .green)
+                                    Text(viewModel.audioTestManager.isPlayingTestAudio ? "停止播放" : "播放测试音频")
                                 }
                                 .frame(maxWidth: .infinity)
                             }
-                            .disabled(viewModel.isTestRecording)
-                            .buttonStyle(.bordered)
-
-                            Button(action: {
-                                Task { await viewModel.stopTestRecording() }
-                            }) {
-                                HStack {
-                                    Image(systemName: "stop.circle")
-                                        .foregroundColor(.red)
-                                    Text("停止")
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .disabled(!viewModel.isTestRecording)
                             .buttonStyle(.bordered)
                         }
 
-                        if viewModel.testAmrFramesEncoded > 0 || viewModel.testAmrFramesDecoded > 0 {
-                            HStack {
-                                Text("编解码测试:")
-                                    .font(.caption)
-                                Text("编码 \(viewModel.testAmrFramesEncoded) 帧")
-                                    .font(.caption)
-                                    .foregroundColor(.green)
-                                Text("解码 \(viewModel.testAmrFramesDecoded) 帧")
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
+                        Divider()
+
+                        // 测试 2: BLE 回环测试
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("BLE 回环测试")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            Button(action: {
+                                viewModel.audioTestManager.startLoopbackTest()
+                            }) {
+                                HStack {
+                                    Image(systemName: viewModel.audioTestManager.isLoopbackTestActive ? "arrow.triangle.2.circlepath" : "arrow.circlepath")
+                                        .foregroundColor(viewModel.audioTestManager.isLoopbackTestActive ? .orange : .blue)
+                                    Text(viewModel.audioTestManager.isLoopbackTestActive ? "停止回环测试" : "开始回环测试")
+                                }
+                                .frame(maxWidth: .infinity)
                             }
+                            .buttonStyle(.bordered)
+                            .disabled(!viewModel.isConnected)
+
+                            // 回环统计
+                            if viewModel.audioTestManager.isLoopbackTestActive {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("发送: \(viewModel.audioTestManager.loopbackStats.framesSent) 帧")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                    Text("接收: \(viewModel.audioTestManager.loopbackStats.framesReceived) 帧")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                    if viewModel.audioTestManager.loopbackStats.averageLatency > 0 {
+                                        Text("延迟: \(String(format: "%.1f", viewModel.audioTestManager.loopbackStats.averageLatency))ms")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
+
+                        // 状态消息
+                        if !viewModel.audioTestManager.statusMessage.isEmpty {
+                            Text(viewModel.audioTestManager.statusMessage)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
                         }
                     }
                     .padding(.vertical, 8)
                 }
-                */
 
                 // 关于
                 SettingsSection(title: "关于") {
