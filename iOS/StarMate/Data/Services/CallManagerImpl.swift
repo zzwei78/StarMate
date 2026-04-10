@@ -45,10 +45,9 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
     private var callTimer: Timer?
     private var urcTask: Task<Void, Never>?
 
-    #if DEBUG
     private var uplinkPcmCount = 0
     private var frameCount = 0
-    #endif
+    private var downlinkFrameCount = 0
 
     // MARK: - Initialization
 
@@ -74,7 +73,12 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         // 设置语音客户端回调
         voiceClient.onAmrFrameReceived = { [weak self] amrData in
             Task { @MainActor [weak self] in
-                self?.audioPipeline.feedDownlinkAmr(amrData)
+                guard let self = self else { return }
+                self.downlinkFrameCount += 1
+                if self.downlinkFrameCount % 50 == 0 {
+                    print("[CallManager] 📥 Received AMR frames: \(self.downlinkFrameCount)")
+                }
+                self.audioPipeline.feedDownlinkAmr(amrData)
             }
         }
 
@@ -82,6 +86,7 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         setupUrcHandler()
 
         print("[CallManager] Initialized")
+        print("[CallManager]    - Recording allowed: \(recordingPreferences.allowCallRecording)")
     }
 
     deinit {
@@ -107,8 +112,10 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         do {
             // 1. 更新状态为拨号中
             callState = .dialing(phoneNumber: phoneNumber)
+            print("[CallManager] 📱 State: dialing")
 
             // 2. 确保 Voice Service 启用
+            print("[CallManager] → Ensuring voice service enabled...")
             try await ensureVoiceServiceEnabled()
 
             // 3. 等待服务稳定
@@ -118,17 +125,28 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             print("[CallManager] 📞 Dialing \(phoneNumber)...")
             let dialResult = await atClient.sendCommand("ATD\(phoneNumber);", timeoutMs: 30000)
 
+            var dialSuccess = false
             switch dialResult {
             case .success(let response):
                 print("[CallManager] ✅ Dial response: \(response)")
+                dialSuccess = true
             case .failure(let error):
-                throw error
+                // 临时：即使拨号失败也继续，用于测试音频通路
+                print("[CallManager] ❌ Dial failed: \(error.localizedDescription)")
+                print("[CallManager] ⚠️ TEST MODE: Continuing anyway to test audio pipeline...")
             }
 
             // 5. 启动音频流水线
+            // 注意：即使拨号失败，也启动音频流水线用于测试
+            print("[CallManager] → Starting audio pipeline...")
             try await startAudioPipeline()
 
+            // 等待一下，确保音频流水线稳定
+            try await Task.sleep(nanoseconds: 100_000_000)
+            print("[CallManager] ✅ Audio pipeline is ready")
+
             // 6. 更新状态为已连接
+            // 临时：测试模式下，即使拨号失败也设置为 connected
             callStartTime = Date()
             currentCall = ActiveCall(
                 phoneNumber: phoneNumber,
@@ -141,16 +159,18 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             // 7. 开始计时
             startCallTimer()
 
-            // 8. 开始录音 (如果允许)
+            // 8. 开始本地录音 (如果允许)
+            print("[CallManager] → Local recording enabled: \(recordingPreferences.allowCallRecording)")
             if recordingPreferences.allowCallRecording {
                 await callRecorder.startRecording()
             }
 
-            print("[CallManager] ✅ Call connected")
+            print("[CallManager] ✅ Call connected (TEST MODE: dial may have failed)")
             return .success(())
 
         } catch {
             // 发生错误，重置状态
+            print("[CallManager] ❌ Call failed: \(error.localizedDescription)")
             callState = .idle
             currentCall = nil
             await cleanupAfterCall()
@@ -353,14 +373,19 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
     /// 确保 Voice Service 已启用
     private func ensureVoiceServiceEnabled() async throws {
         // 检查服务状态
+        print("[CallManager] → Checking voice service status...")
         let statusResult = await systemClient.getServiceStatus(ServiceId.SPP_VOICE)
 
         let isEnabled: Bool
         switch statusResult {
         case .success(let status):
             isEnabled = status
+            print("[CallManager]    Voice service status: \(isEnabled)")
         case .failure(let error):
-            throw error
+            // TEST MODE: 即使状态检查失败也继续
+            print("[CallManager]    ⚠️ Failed to get status: \(error.localizedDescription)")
+            print("[CallManager]    ⚠️ TEST MODE: Continuing anyway...")
+            return
         }
 
         if isEnabled {
@@ -369,32 +394,53 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         }
 
         // 启用服务
-        print("[CallManager] Enabling voice service...")
+        print("[CallManager] → Enabling voice service...")
         let startResult = await systemClient.startVoiceService()
 
         switch startResult {
         case .success:
-            break
+            print("[CallManager]    Voice service start command sent")
         case .failure(let error):
-            throw error
+            // TEST MODE: 即使启动失败也继续
+            print("[CallManager]    ❌ Failed to start voice service: \(error.localizedDescription)")
+            print("[CallManager]    ⚠️ TEST MODE: Continuing anyway...")
+            // 不抛出错误，继续执行
         }
 
         // 重新发现服务
+        print("[CallManager] → Rediscovering services...")
         let discoverResult = await bleManager.discoverServices()
 
         switch discoverResult {
         case .success:
-            break
+            print("[CallManager]    ✅ Services rediscovered")
         case .failure(let error):
+            print("[CallManager]    ❌ Service discovery failed: \(error.localizedDescription)")
             throw error
         }
 
         // 检查 Voice Service 是否可用
-        if !bleManager.isVoiceServiceAvailable() {
+        let voiceAvailable = bleManager.isVoiceServiceAvailable()
+        print("[CallManager]    Voice service available: \(voiceAvailable)")
+
+        if !voiceAvailable {
             // 重试一次
+            print("[CallManager]    ⚠️ Voice service not available, retrying...")
             try await Task.sleep(nanoseconds: 300_000_000)
-            _ = await systemClient.startVoiceService()
-            _ = await bleManager.discoverServices()
+            let retryResult = await systemClient.startVoiceService()
+            switch retryResult {
+            case .success:
+                print("[CallManager]    Retry startVoiceService: success")
+            case .failure(let error):
+                print("[CallManager]    ❌ Retry failed: \(error.localizedDescription)")
+            }
+            let retryDiscover = await bleManager.discoverServices()
+            switch retryDiscover {
+            case .success:
+                print("[CallManager]    Retry discoverServices: success")
+            case .failure(let error):
+                print("[CallManager]    ❌ Retry discover failed: \(error.localizedDescription)")
+            }
         }
 
         print("[CallManager] ✅ Voice service enabled")
@@ -402,14 +448,16 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
 
     /// 启动音频流水线
     private func startAudioPipeline() async throws {
-        print("[CallManager] Starting audio pipeline...")
+        print("[CallManager] ==================================================")
+        print("[CallManager] 🎙️ Starting audio pipeline...")
+        print("[CallManager] ==================================================")
 
         // 启动录音
         print("[CallManager] → Starting recording...")
         let recordResult = await audioPipeline.startRecording()
         switch recordResult {
         case .success:
-            print("[CallManager] ✅ Recording started")
+            print("[CallManager] ✅ Recording started - listening for audio")
         case .failure(let error):
             print("[CallManager] ❌ Recording failed: \(error)")
             throw error
@@ -420,18 +468,29 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         let playResult = await audioPipeline.startPlaying()
         switch playResult {
         case .success:
-            print("[CallManager] ✅ Audio pipeline started (recording + playing)")
+            print("[CallManager] ✅ Audio pipeline fully started (recording + playing)")
+            print("[CallManager] ==================================================")
         case .failure(let error):
             // 停止录音
             _ = await audioPipeline.stopRecording()
             print("[CallManager] ❌ Playback failed: \(error)")
             throw error
         }
+
+        // 重置计数器
+        frameCount = 0
+        uplinkPcmCount = 0
+        downlinkFrameCount = 0
     }
 
     /// 停止音频流水线
     private func stopAudioPipeline() async {
-        print("[CallManager] Stopping audio pipeline...")
+        print("[CallManager] ==================================================")
+        print("[CallManager] 🛑 Stopping audio pipeline...")
+        print("[CallManager]    - Total encoded frames: \(frameCount)")
+        print("[CallManager]    - Total uplink PCM frames: \(uplinkPcmCount)")
+        print("[CallManager]    - Total downlink frames: \(downlinkFrameCount)")
+        print("[CallManager] ==================================================")
 
         _ = await audioPipeline.stopRecording()
         _ = await audioPipeline.stopPlaying()
@@ -556,15 +615,15 @@ extension CallManagerImpl: AudioPipelineDelegate {
     func audioPipeline(_ pipeline: AudioPipelineManager, didEncodeAmrFrame frame: Data) {
         // 发送 AMR 帧到设备
         Task {
+            frameCount += 1
+            if frameCount % 10 == 0 {  // 每10帧打印一次（约200ms）
+                print("[CallManager] 📤 Sent AMR frame #\(frameCount) (size: \(frame.count)B)")
+            }
+
             let result = await voiceClient.sendAmrFrame(frame)
             switch result {
             case .success:
-                #if DEBUG
-                frameCount += 1
-                if frameCount % 50 == 0 {  // 每50帧打印一次，约1秒
-                    print("[CallManager] 📤 Sent AMR frames: \(frameCount) (size: \(frame.count)B)")
-                }
-                #endif
+                break
             case .failure(let error):
                 print("[CallManager] ❌ Failed to send AMR frame: \(error.localizedDescription)")
             }
@@ -573,14 +632,11 @@ extension CallManagerImpl: AudioPipelineDelegate {
 
     /// 上行 PCM 已采集 (送给录音器)
     func audioPipeline(_ pipeline: AudioPipelineManager, didCaptureUplinkPcm pcm: Data) {
-        callRecorder.feedUplinkPcm(pcm)
-
-        #if DEBUG
         uplinkPcmCount += 1
-        if uplinkPcmCount % 250 == 0 {  // 每5秒
+        if uplinkPcmCount % 50 == 0 {  // 每1秒
             print("[CallManager] 🎙️ Uplink PCM: \(uplinkPcmCount) frames recorded")
         }
-        #endif
+        callRecorder.feedUplinkPcm(pcm)
     }
 
     /// 下行 PCM 已解码 (送给录音器)

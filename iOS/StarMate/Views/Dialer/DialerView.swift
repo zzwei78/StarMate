@@ -180,7 +180,7 @@ struct DialButton: View {
 struct CallHistorySection: View {
     let records: [CallRecord]
     let onRecordClick: (CallRecord) -> Void
-    let onRecordDelete: (String) -> Void
+    let onRecordDelete: (CallRecord) -> Void
     let onClearAll: () -> Void
 
     var body: some View {
@@ -212,7 +212,7 @@ struct CallHistorySection: View {
 
                     Spacer()
 
-                    Button(action: { onRecordDelete(record.id) }) {
+                    Button(action: { onRecordDelete(record) }) {
                         Image(systemName: "trash")
                             .foregroundColor(.systemRed)
                     }

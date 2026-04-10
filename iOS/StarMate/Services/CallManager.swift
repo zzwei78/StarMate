@@ -1,28 +1,121 @@
 import Foundation
 
-// MARK: - Call Manager
+// MARK: - Call Manager (ViewModel Wrapper)
+
+/// 通话管理器 ViewModel
+///
+/// 作为 SwiftUI View 和底层 CallManagerImpl 之间的桥梁
+@MainActor
 class CallManager: ObservableObject {
-    // Call State
+
+    // MARK: - Published State
+
     @Published var callState: CallState = .idle
     @Published var phoneNumber: String = ""
     @Published var isSpeakerOn = false
     @Published var isMuted = false
 
-    // Call Records
     @Published var callRecords: [CallRecord] = []
 
-    // Incoming Call
     @Published var incomingCall: CallRecord?
 
-    // Recording
     @Published var allowCallRecording = true
     @Published var isRecording = false
 
-    // Error
     @Published var errorMessage: String?
 
+    // MARK: - Private Properties
+
+    private var impl: CallManagerImpl?
     private var callStartTime: Date?
     private var callTimer: Timer?
+
+    // BLE Manager (需要从环境获取或创建)
+    private weak var bleManager: BleManagerImpl?
+
+    // 创建独立的客户端实例（共享 BLE 连接）
+    private lazy var atClient = AtServiceClientImpl()
+    private lazy var systemClient = SystemServiceClientImpl()
+    private lazy var voiceClient = VoiceServiceClientImpl()
+
+    // MARK: - Initialization
+
+    init(bleManager: BleManagerImpl? = nil) {
+        self.bleManager = bleManager
+        print("[CallManager-VM] Initialized with \(bleManager != nil ? "external" : "no") BLE manager")
+
+        // 如果有 BLE manager，设置客户端的 BLE 引用
+        if let bleManager = bleManager {
+            setupClients(with: bleManager)
+        }
+    }
+
+    /// 设置客户端的 BLE 引用
+    private func setupClients(with bleManager: BleManagerImpl) {
+        // 注意：这里需要根据实际的客户端实现来设置
+        // 可能需要在客户端中添加对 BLE manager 的引用
+        print("[CallManager-VM] Setting up clients with BLE manager")
+    }
+
+    /// 确保底层实现已初始化
+    private func ensureImpl() -> CallManagerImpl? {
+        if let impl = impl {
+            return impl
+        }
+
+        guard let bleManager = bleManager else {
+            print("[CallManager-VM] ⚠️ BLE Manager not available")
+            return nil
+        }
+
+        // 从 BLE manager 获取共享的客户端
+        // 注意：需要强制转换类型，因为协议返回的是协议类型
+        let sharedAtClient = bleManager.getAtCommandClient() as! AtServiceClientImpl
+        let sharedSystemClient = bleManager.getSystemClient() as! SystemServiceClientImpl
+        let sharedVoiceClient = bleManager.getVoiceClient() as! VoiceServiceClientImpl
+
+        // 创建底层实现
+        let impl = CallManagerImpl(
+            atClient: sharedAtClient,
+            systemClient: sharedSystemClient,
+            bleManager: bleManager,
+            voiceClient: sharedVoiceClient,
+            callRecorder: CallRecorderImpl(),
+            recordingPreferences: RecordingPreferences.shared
+        )
+
+        // 监听状态变化
+        observeImplState(impl)
+
+        self.impl = impl
+        print("[CallManager-VM] ✅ CallManagerImpl created")
+        return impl
+    }
+
+    /// 监听底层实现的状态变化
+    private func observeImplState(_ impl: CallManagerImpl) {
+        // 使用 Timer 轮询状态变化 (简化实现)
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+
+            // 同步状态
+            if self.callState != impl.callState {
+                self.callState = impl.callState
+            }
+            if self.isSpeakerOn != impl.isSpeakerOn {
+                self.isSpeakerOn = impl.isSpeakerOn
+            }
+            if self.isMuted != impl.isMuted {
+                self.isMuted = impl.isMuted
+            }
+            if self.callRecords != impl.callRecords {
+                self.callRecords = impl.callRecords
+            }
+        }
+    }
 
     // MARK: - Public Methods
 
@@ -39,98 +132,155 @@ class CallManager: ObservableObject {
     }
 
     func makeCall() {
-        guard !phoneNumber.isEmpty else { return }
+        guard !phoneNumber.isEmpty else {
+            errorMessage = "请输入电话号码"
+            return
+        }
 
-        callState = .dialing(phoneNumber: phoneNumber)
+        Task {
+            guard let impl = ensureImpl() else {
+                errorMessage = "无法连接到设备，请确保蓝牙已连接"
+                return
+            }
 
-        // Simulate dialing and connecting
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            guard let self = self else { return }
+            print("[CallManager-VM] 📞 Calling makeCall on impl...")
+            let result = await impl.makeCall(phoneNumber: phoneNumber)
 
-            self.callState = .connected(phoneNumber: self.phoneNumber, startTime: Date())
-            self.callStartTime = Date()
-            self.startCallTimer()
-
-            // Add to call records
-            let record = CallRecord(
-                phoneNumber: self.phoneNumber,
-                callType: .outgoing,
-                callStatus: .completed
-            )
-            self.callRecords.insert(record, at: 0)
+            switch result {
+            case .success:
+                print("[CallManager-VM] ✅ Call started successfully")
+            case .failure(let error):
+                print("[CallManager-VM] ❌ Call failed: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func answerCall() {
-        guard let incoming = incomingCall else { return }
+        Task {
+            guard let impl = ensureImpl() else {
+                errorMessage = "无法接听电话"
+                return
+            }
 
-        callState = .connected(phoneNumber: incoming.phoneNumber, startTime: Date())
-        callStartTime = Date()
-        startCallTimer()
-        incomingCall = nil
+            let result = await impl.answerCall()
+
+            switch result {
+            case .success:
+                print("[CallManager-VM] ✅ Call answered")
+            case .failure(let error):
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     func endCall() {
-        if case .connected(let number, let startTime) = callState {
-            // Update call record duration
-            let duration = Date().timeIntervalSince(startTime)
-            if let index = callRecords.firstIndex(where: { $0.phoneNumber == number }) {
-                let old = callRecords[index]
-                callRecords[index] = CallRecord(
-                    id: old.id,
-                    phoneNumber: old.phoneNumber,
-                    contactName: old.contactName,
-                    callType: old.callType,
-                    callStatus: .completed,
-                    startTime: old.startTime,
-                    duration: duration
-                )
+        Task {
+            guard let impl = impl else {
+                // 如果没有底层实现，直接更新状态
+                callState = .ending(reason: .localHangup)
+                stopCallTimer()
+
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                callState = .idle
+                phoneNumber = ""
+                return
             }
-        }
 
-        callState = .ending(reason: .localHangup)
-        stopCallTimer()
+            let result = await impl.endCall()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.callState = .idle
-            self?.phoneNumber = ""
+            switch result {
+            case .success:
+                print("[CallManager-VM] ✅ Call ended")
+            case .failure(let error):
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func rejectCall() {
-        incomingCall = nil
-        callState = .idle
+        Task {
+            guard let impl = impl else {
+                callState = .idle
+                return
+            }
+
+            let result = await impl.rejectCall()
+            switch result {
+            case .success:
+                callState = .idle
+            case .failure(let error):
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     func toggleSpeaker() {
-        isSpeakerOn.toggle()
+        Task {
+            guard let impl = impl else {
+                isSpeakerOn.toggle()
+                return
+            }
+
+            let result = await impl.toggleSpeaker()
+
+            switch result {
+            case .success:
+                break
+            case .failure:
+                isSpeakerOn.toggle()
+            }
+        }
     }
 
     func toggleMute() {
-        isMuted.toggle()
+        Task {
+            guard let impl = impl else {
+                isMuted.toggle()
+                return
+            }
+
+            let result = await impl.toggleMute()
+
+            switch result {
+            case .success:
+                break
+            case .failure:
+                isMuted.toggle()
+            }
+        }
     }
 
     func sendDtmf(_ digit: String) {
-        // Send DTMF tone
+        Task {
+            guard let impl = impl else { return }
+            // 尝试将数字转换为 DtmfKey
+            if let dtmfKey = DtmfKey(rawValue: digit) {
+                _ = await impl.sendDtmf(dtmfKey)
+            }
+        }
     }
 
     func fillNumberFromRecord(_ record: CallRecord) {
         phoneNumber = record.phoneNumber
     }
 
-    func deleteCallRecord(_ id: String) {
-        callRecords.removeAll { $0.id == id }
+    func deleteCallRecord(_ record: CallRecord) {
+        Task {
+            await impl?.deleteCallRecord(record.id)
+        }
     }
 
     func clearAllCallRecords() {
-        callRecords = []
+        Task {
+            await impl?.clearAllCallRecords()
+        }
     }
 
     func setAllowCallRecording(_ allowed: Bool) {
         allowCallRecording = allowed
     }
 
-    // Simulate incoming call
     func simulateIncomingCall(from number: String) {
         incomingCall = CallRecord(
             phoneNumber: number,

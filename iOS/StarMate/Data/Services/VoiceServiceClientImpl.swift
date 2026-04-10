@@ -153,7 +153,17 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
     /// 处理 BLE 通知数据
     ///
     /// 由 BLEManager 在收到 VOICE_OUT 或 VOICE_DATA 通知时调用
+    @MainActor
     func handleNotification(data: Data, from characteristic: CBCharacteristic) {
+        // 添加调试日志
+        if framesReceived == 0 {
+            print("[VoiceService] 🔔 FIRST notification received from \(characteristic.uuid.uuidString)")
+            print("[VoiceService]    - Data size: \(data.count) bytes")
+            print("[VoiceService]    - Data (hex): \(data as NSData)")
+        } else if framesReceived % 100 == 0 {
+            print("[VoiceService] 🔔 Notification #\(framesReceived), size: \(data.count)B")
+        }
+
         // 添加到接收缓冲区
         receiveBuffer.append(data)
         bytesReceived += data.count
@@ -203,7 +213,7 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
             return .failure(error)
         }
 
-        // 发送到 BLE
+        // 发送到 BLE (Voice GATT Server 必须使用 writeWithoutResponse)
         peripheral.writeValue(packet, for: characteristic, type: .withoutResponse)
 
         // 更新统计
@@ -238,11 +248,21 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
 
     /// 处理接收缓冲区，提取完整的 AT^AUDPCM 数据包
     private func processReceiveBuffer() {
+        // 调试：显示接收缓冲区状态
+        if receiveBuffer.count > 0 && framesReceived == 0 {
+            print("[VoiceService] 📦 Processing receive buffer, size: \(receiveBuffer.count)B")
+            print("[VoiceService]    - Buffer (hex): \(receiveBuffer as NSData)")
+            print("[VoiceService]    - Looking for prefix: \(Constants.prefix)")
+        }
+
         while true {
             let buffer = receiveBuffer
 
             // 需要至少前缀长度
             guard buffer.count >= Constants.prefix.count else {
+                if framesReceived == 0 && buffer.count > 0 {
+                    print("[VoiceService] ⚠️ Buffer too small (\(buffer.count)B), waiting for more...")
+                }
                 break
             }
 
@@ -257,6 +277,10 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
                 break
             }
 
+            if framesReceived == 0 {
+                print("[VoiceService] ✅ Found prefix at position \(buffer.distance(from: buffer.startIndex, to: prefixRange.lowerBound))")
+            }
+
             // 前缀之后的位置
             let afterPrefix = prefixRange.upperBound
             guard afterPrefix < buffer.endIndex else {
@@ -266,6 +290,9 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
             // 查找结束引号
             guard let endQuoteRange = buffer[afterPrefix...].firstIndex(of: UInt8(ascii: "\"")) else {
                 // 没有找到结束引号，等待更多数据
+                if framesReceived == 0 {
+                    print("[VoiceService] ⚠️ No closing quote found, waiting...")
+                }
                 break
             }
 
@@ -283,6 +310,11 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
                let amrData = Data(base64Encoded: base64String) {
                 framesReceived += 1
 
+                if framesReceived == 1 {
+                    print("[VoiceService] ✅ FIRST AMR frame decoded! size: \(amrData.count)B")
+                    print("[VoiceService]    - Base64: \(base64String)")
+                }
+
                 // 回调 AMR 帧
                 onAmrFrameReceived?(amrData)
 
@@ -292,6 +324,7 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
                 }
             } else {
                 print("[VoiceService] ⚠️ Failed to decode base64 data")
+                print("[VoiceService]    - Base64 data: \(base64Data as NSData)")
             }
         }
     }
@@ -350,6 +383,7 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
 enum VoiceServiceError: LocalizedError {
     case notConnected
     case characteristicNotFound
+    case characteristicNotWritable
     case encodingFailed
     case packetTooLarge(Int)
 
@@ -359,6 +393,8 @@ enum VoiceServiceError: LocalizedError {
             return "BLE peripheral not connected"
         case .characteristicNotFound:
             return "Voice characteristic not found"
+        case .characteristicNotWritable:
+            return "Voice characteristic not writable"
         case .encodingFailed:
             return "Failed to encode AMR frame"
         case .packetTooLarge(let size):

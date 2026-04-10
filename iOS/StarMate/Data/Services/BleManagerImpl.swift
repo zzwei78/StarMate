@@ -28,6 +28,7 @@ final class BleManagerImpl: NSObject, BleManagerProtocol, ObservableObject {
     private var atResponseChar: CBCharacteristic?
     private var voiceInChar: CBCharacteristic?
     private var voiceOutChar: CBCharacteristic?
+    private var voiceDataChar: CBCharacteristic?
     private var otaControlChar: CBCharacteristic?
     private var otaDataChar: CBCharacteristic?
     private var otaStatusChar: CBCharacteristic?
@@ -339,22 +340,45 @@ final class BleManagerImpl: NSObject, BleManagerProtocol, ObservableObject {
     }
 
     private func dispatchNotification(data: Data, from characteristic: CBCharacteristic) {
+        // 首先根据服务 UUID 分发（更可靠）
+        if let service = characteristic.service {
+            let serviceUuid = service.uuid
+
+            switch serviceUuid {
+            case BleUuid.VOICE_SERVICE:
+                voiceServiceClient.handleNotification(data: data, from: characteristic)
+                return
+
+            case BleUuid.AT_SERVICE:
+                atServiceClient.handleNotification(data: data, from: characteristic)
+                return
+
+            case BleUuid.SYSTEM_SERVICE:
+                systemServiceClient.handleNotification(data: data, from: characteristic)
+                return
+
+            case BleUuid.OTA_SERVICE:
+                otaServiceClient.handleNotification(data: data, from: characteristic)
+                return
+
+            default:
+                break
+            }
+        }
+
+        // 回退：如果服务不可用，使用特征值 UUID 分发
         switch characteristic.uuid {
+        case BleUuid.VOICE_OUT, BleUuid.VOICE_DATA:
+            voiceServiceClient.handleNotification(data: data, from: characteristic)
+
         case BleUuid.SYSTEM_CONTROL, BleUuid.SYSTEM_STATUS:
             systemServiceClient.handleNotification(data: data, from: characteristic)
 
         case BleUuid.AT_COMMAND, BleUuid.AT_RESPONSE:
             atServiceClient.handleNotification(data: data, from: characteristic)
 
-        case BleUuid.VOICE_OUT, BleUuid.VOICE_DATA:
-            voiceServiceClient.handleNotification(data: data, from: characteristic)
-
         case BleUuid.OTA_CONTROL, BleUuid.OTA_STATUS:
             otaServiceClient.handleNotification(data: data, from: characteristic)
-
-        case BleUuid.OTA_STATUS, BleUuid.OTA_CONTROL:
-            // TODO: Dispatch to OTA client
-            break
 
         default:
             break
@@ -494,6 +518,10 @@ extension BleManagerImpl: CBPeripheralDelegate {
                 case BleUuid.VOICE_OUT:
                     voiceOutChar = characteristic
                     enableNotification(for: characteristic, on: peripheral)
+                case BleUuid.VOICE_DATA:
+                    voiceDataChar = characteristic
+                    // VOICE_DATA 也需要订阅通知 (用于接收下行数据)
+                    enableNotification(for: characteristic, on: peripheral)
                 case BleUuid.OTA_CONTROL:
                     otaControlChar = characteristic
                     enableNotification(for: characteristic, on: peripheral)
@@ -532,7 +560,7 @@ extension BleManagerImpl: CBPeripheralDelegate {
     nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         Task { @MainActor in
             if let error = error {
-                print("[BLE] Error updating value: \(error.localizedDescription)")
+                print("[BLE] ❌ Error updating value: \(error.localizedDescription)")
                 return
             }
 
