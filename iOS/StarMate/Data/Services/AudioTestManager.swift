@@ -84,7 +84,20 @@ final class AudioTestManager: ObservableObject {
     private func setupAudioEngine() {
         audioEngine.attach(playerNode)
         let mainMixer = audioEngine.mainMixerNode
-        audioEngine.connect(playerNode, to: mainMixer, format: nil)
+
+        // 创建播放格式: 48kHz, 16bit, Mono
+        guard let playbackFormat = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: 48000,
+            channels: 1,
+            interleaved: true
+        ) else {
+            print("[AudioTest] Failed to create playback format")
+            return
+        }
+
+        // 连接时指定格式，确保输出格式匹配
+        audioEngine.connect(playerNode, to: mainMixer, format: playbackFormat)
         playerNode.volume = 1.0
 
         do {
