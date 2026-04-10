@@ -109,7 +109,7 @@ private class AudioPacketRecorder {
 ///
 /// ## 上行流程 (发送)
 /// ```
-/// AVAudioEngine (44.1k) → AudioResampler (8k) → PcmFrameBuffer (320B)
+/// AudioQueue (48k) → AudioResampler (8k) → PcmFrameBuffer (320B)
 ///     → AmrNbEncoder (32B) → Delegate.didEncodeAmrFrame
 /// ```
 ///
@@ -159,11 +159,17 @@ final class AudioPipelineManager: AudioPipelineProtocol {
     /// 代理
     weak var delegate: AudioPipelineDelegate?
 
-    /// 音频引擎
+    /// 音频引擎 (仅用于播放)
     private let audioEngine = AVAudioEngine()
 
     /// 播放节点
     private let playerNode = AVAudioPlayerNode()
+
+    /// AudioQueue (用于录音)
+    private var audioQueue: AudioQueueRef?
+    private var audioQueueFormat: AudioStreamBasicDescription?
+    private var audioQueueCallbackCount = 0
+    private var lastAudioQueueCallbackTime: Date?
 
     /// 重采样器
     private let resampler = AudioResampler()
@@ -227,9 +233,6 @@ final class AudioPipelineManager: AudioPipelineProtocol {
     /// 播放定时器
     private var playbackTimer: Timer?
 
-    /// 调试定时器 - 用于检查音频引擎状态
-    private var debugCheckTimer: Timer?
-
     /// 播放状态监控定时器
     private var playbackMonitorTimer: Timer?
 
@@ -261,7 +264,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
 
     // MARK: - Setup
 
-    /// 配置音频引擎
+    /// 配置音频引擎（仅用于播放）
     private func setupAudioEngine() {
         // 附加播放节点
         audioEngine.attach(playerNode)
@@ -274,7 +277,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         playerNode.volume = playbackGain
         mainMixer.outputVolume = 1.0
 
-        Log("AudioPipeline", "Engine configured (playback gain: \(playbackGain)x)")
+        Log("AudioPipeline", "Player engine configured (playback only)")
     }
 
     /// 配置音频会话
@@ -318,9 +321,9 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         try session.setPreferredSampleRate(48000)
 
         // 设置缓冲区时长
-        // 设置为 20ms (0.02) 以匹配 AMR 帧时长，可能改善 tap 回调稳定性
-        // 注意: 这只是"首选"值，系统可能不严格遵循
-        try session.setPreferredIOBufferDuration(0.02)
+        // 尝试更小的值 (5ms) 以获得更频繁的回调
+        // 注意: 系统可能会根据硬件调整实际值
+        try session.setPreferredIOBufferDuration(0.005)  // 5ms
 
         // 设置首选输入输出通道数
         try session.setPreferredInputNumberOfChannels(1)
@@ -332,6 +335,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         Log("AudioPipeline", "Session configured: \(mode)")
         Log("AudioPipeline", "  - Mode: \(session.mode.rawValue) (voiceChat enables AEC/AGC/ANS)")
         Log("AudioPipeline", "  - SampleRate: \(session.sampleRate)Hz")
+        Log("AudioPipeline", "  - IOBufferDuration: \(session.ioBufferDuration * 1000)ms (requested: 5ms)")
         Log("AudioPipeline", "  - InputChannels: \(session.inputNumberOfChannels)")
         Log("AudioPipeline", "  - OutputChannels: \(session.outputNumberOfChannels)")
         Log("AudioPipeline", "  - Route: \(session.currentRoute.outputs.map { $0.portName }.joined(separator: ", "))")
@@ -340,7 +344,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
 
     // MARK: - Recording (Uplink)
 
-    /// 开始录音
+    /// 开始录音 - 使用 AudioQueue 实现稳定的 20ms 回调
     func startRecording() async -> Result<Void, Error> {
         guard !isRecording else {
             return .success(())
@@ -356,42 +360,95 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             // 配置音频会话
             try configureAudioSession(mode: currentMode)
 
-            // 获取输入节点
-            let inputNode = audioEngine.inputNode
-            let inputFormat = inputNode.outputFormat(forBus: 0)
+            // 设置音频格式描述: 48kHz, 16bit, Mono
+            var streamFormat = AudioStreamBasicDescription(
+                mSampleRate: 48000,
+                mFormatID: kAudioFormatLinearPCM,
+                mFormatFlags: kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked,
+                mBytesPerPacket: 2,
+                mFramesPerPacket: 1,
+                mBytesPerFrame: 2,
+                mChannelsPerFrame: 1,
+                mBitsPerChannel: 16,
+                mReserved: 0
+            )
+            audioQueueFormat = streamFormat
 
-            Log("AudioPipeline", "Input format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount)ch, \(inputFormat.commonFormat.rawValue)")
+            Log("AudioPipeline", "Creating AudioQueue: 48000Hz, 16bit, Mono")
 
-            // 安装 tap 捕获音频（使用 nil 让系统自动选择格式）
-            var tapCallCount = 0
-            inputNode.installTap(
-                onBus: 0,
-                bufferSize: Constants.audioBufferSize,
-                format: nil  // 使用 nil 让系统自动选择
-            ) { [weak self] buffer, _ in
-                tapCallCount += 1
-                if tapCallCount == 1 {
-                    Log("AudioPipeline", "Audio capture started")
-                }
+            // 创建上下文，传递 self 引用
+            let context = Unmanaged.passUnretained(self).toOpaque()
+            var queue: AudioQueueRef?
 
-                let bufferCopy = buffer.copy() as? AVAudioPCMBuffer
-                Task { @MainActor [weak self] in
-                    guard let bufferCopy = bufferCopy else { return }
-                    self?.processUplinkBuffer(bufferCopy)
+            // AudioQueue 回调函数
+            let audioQueueInputCallback: AudioQueueInputCallback = { (
+                userData: UnsafeMutableRawPointer?,
+                queue: AudioQueueRef,
+                buffer: AudioQueueBufferRef,
+                startTime: UnsafePointer<AudioTimeStamp>,
+                numFrames: UInt32,
+                packetDescriptions: UnsafePointer<AudioStreamPacketDescription>?
+            ) in
+                guard let userData = userData else { return }
+
+                // 从上下文中恢复 AudioPipelineManager 实例
+                let audioPipeline = Unmanaged<AudioPipelineManager>.fromOpaque(userData).takeUnretainedValue()
+
+                // 在单独的线程处理回调
+                audioPipeline.handleAudioQueueCallback(buffer: buffer)
+            }
+
+            let status = AudioQueueNewInput(
+                &streamFormat,
+                audioQueueInputCallback,
+                context,
+                nil,
+                nil,
+                0,
+                &queue
+            )
+
+            guard status == noErr, let queue = queue else {
+                return .failure(AudioPipelineError.recordingFailed)
+            }
+
+            audioQueue = queue
+
+            // 分配 3 个缓冲区，每个 480 帧 = 10ms @ 48kHz
+            // 使用更小的缓冲区以获得更频繁的回调
+            let framesPerBuffer: UInt32 = 480  // 10ms @ 48kHz
+            let bufferSizeInBytes = framesPerBuffer * 2  // 480 frames * 2 bytes (16-bit)
+
+            Log("AudioPipeline", "Allocating buffers: \(framesPerBuffer) frames = 10ms")
+
+            for i in 0..<3 {
+                var buffer: AudioQueueBufferRef?
+                let allocStatus = AudioQueueAllocateBuffer(
+                    queue,
+                    bufferSizeInBytes,
+                    &buffer
+                )
+                if allocStatus == noErr, let buffer = buffer {
+                    // 注意: 不设置 mAudioDataByteSize，让 AudioQueue 填充实际大小
+                    AudioQueueEnqueueBuffer(queue, buffer, 0, nil)
+                    Log("AudioPipeline", "  Buffer #\(i) allocated: \(bufferSizeInBytes)B")
+                } else {
+                    Log("AudioPipeline", "  Failed to allocate buffer #\(i)")
                 }
             }
 
-            // 启动音频引擎
-            if !audioEngine.isRunning {
-                try audioEngine.start()
+            // 启动音频队列
+            let startStatus = AudioQueueStart(queue, nil)
+            if startStatus != noErr {
+                return .failure(AudioPipelineError.recordingFailed)
             }
 
             isRecording = true
             encodeFrameCount = 0
             resampleCount = 0
-            Log("AudioPipeline", "Recording started")
-
-            startDebugTimer()
+            audioQueueCallbackCount = 0
+            lastAudioQueueCallbackTime = nil
+            Log("AudioPipeline", "AudioQueue recording started (20ms callbacks expected)")
 
             return .success(())
 
@@ -407,68 +464,83 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             return .success(())
         }
 
-        stopDebugTimer()
-
-        do {
-            audioEngine.inputNode.removeTap(onBus: 0)
-
-            if audioEngine.isRunning {
-                audioEngine.stop()
-            }
-
-            isRecording = false
-            Log("AudioPipeline", "Recording stopped (encoded: \(encodeFrameCount) frames)")
-
-            uplinkFrameBuffer.clear()
-
-            try AVAudioSession.sharedInstance().setActive(false)
-
-            return .success(())
-
-        } catch let error {
-            print("[AudioPipeline] ❌ Failed to stop recording: \(error)")
-            return .failure(error)
-        }
-    }
-
-    // MARK: - Debug Timer
-
-    /// 启动调试定时器 - 每秒检查音频引擎状态
-    private func startDebugTimer() {
-        stopDebugTimer()
-
-        var checkCount = 0
-        debugCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-
-            checkCount += 1
-            let session = AVAudioSession.sharedInstance()
-
-            print("[AudioPipeline-DEBUG] 🔍 Check #\(checkCount):")
-            print("[AudioPipeline-DEBUG]    - audioEngine.isRunning: \(self.audioEngine.isRunning)")
-            print("[AudioPipeline-DEBUG]    - isRecording: \(self.isRecording)")
-            print("[AudioPipeline-DEBUG]    - encodeFrameCount: \(self.encodeFrameCount)")
-            print("[AudioPipeline-DEBUG]    - resampleCount: \(self.resampleCount)")
-            print("[AudioPipeline-DEBUG]    - session.isInputAvailable: \(session.isInputAvailable)")
-            print("[AudioPipeline-DEBUG]    - session.category: \(session.category)")
-
-            // 如果5秒后还没有任何音频数据，打印警告
-            if checkCount == 5 && self.encodeFrameCount == 0 {
-                print("[AudioPipeline-DEBUG] ⚠️⚠️⚠️ WARNING: No audio data after 5 seconds! ⚠️⚠️⚠️")
-                print("[AudioPipeline-DEBUG]    - Check microphone permissions")
-                print("[AudioPipeline-DEBUG]    - Check if another app is using the microphone")
-                print("[AudioPipeline-DEBUG]    - Try testing on a physical device (not simulator)")
-            }
+        // 停止并释放音频队列
+        if let queue = audioQueue {
+            AudioQueueStop(queue, true)
+            audioQueue = nil
         }
 
-        debugCheckTimer?.tolerance = 0.1
+        audioQueueFormat = nil
+
+        isRecording = false
+        Log("AudioPipeline", "AudioQueue recording stopped (encoded: \(encodeFrameCount) frames)")
+
+        uplinkFrameBuffer.clear()
+
+        // 停用音频会话
+        try? AVAudioSession.sharedInstance().setActive(false)
+
+        return .success(())
     }
 
-    /// 停止调试定时器
-    private func stopDebugTimer() {
-        debugCheckTimer?.invalidate()
-        debugCheckTimer = nil
+    /// AudioQueue 回调处理
+    private func handleAudioQueueCallback(buffer: AudioQueueBufferRef) {
+        guard let audioQueue = audioQueue else { return }
+
+        let now = Date()
+        audioQueueCallbackCount += 1
+
+        // 从 AudioQueue 缓冲区读取音频数据
+        let audioBuffer = buffer.pointee
+        let frameCount = UInt32(audioBuffer.mAudioDataByteSize / 2)  // 16-bit = 2 bytes per frame
+        guard frameCount > 0 else { return }
+
+        // 打印回调间隔和帧数（前 30 次）
+        if audioQueueCallbackCount <= 30 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm:ss.SSS"
+            let timestamp = formatter.string(from: now)
+
+            var intervalStr = ""
+            if let lastTime = lastAudioQueueCallbackTime {
+                let interval = now.timeIntervalSince(lastTime) * 1000
+                intervalStr = ", interval: \(String(format: "%.1f", interval))ms"
+            }
+            print("[\(timestamp)] [AudioQueue] Callback #\(audioQueueCallbackCount), frames: \(frameCount)\(intervalStr)")
+        }
+        lastAudioQueueCallbackTime = now
+
+        // 创建 AVAudioPCMBuffer
+        guard let format = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: 48000,
+            channels: 1,
+            interleaved: true
+        ) else {
+            return
+        }
+
+        guard let pcmBuffer = AVAudioPCMBuffer(
+            pcmFormat: format,
+            frameCapacity: frameCount
+        ) else {
+            return
+        }
+
+        pcmBuffer.frameLength = frameCount
+
+        // 复制音频数据从 AudioQueue 缓冲区到 AVAudioPCMBuffer
+        let srcPtr = audioBuffer.mAudioData.assumingMemoryBound(to: Int16.self)
+        pcmBuffer.int16ChannelData![0].update(from: srcPtr, count: Int(frameCount))
+
+        // 调用现有的处理函数（保持兼容）
+        processUplinkBuffer(pcmBuffer)
+
+        // 重新入队缓冲区以继续录音
+        AudioQueueEnqueueBuffer(audioQueue, buffer, 0, nil)
     }
+
+    // MARK: - Processing
 
     /// 处理上行音频缓冲区
     private var lastUplinkEncodeTime: Date?
@@ -954,10 +1026,11 @@ final class AudioPipelineManager: AudioPipelineProtocol {
     /// 清理资源
     private func cleanup() {
         stopPlaybackTimer()
-        stopDebugTimer()
 
-        if isRecording {
-            audioEngine.inputNode.removeTap(onBus: 0)
+        // 停止 AudioQueue 录音
+        if let queue = audioQueue {
+            AudioQueueStop(queue, true)
+            audioQueue = nil
         }
 
         playerNode.stop()
@@ -1007,6 +1080,7 @@ enum AudioPipelineError: LocalizedError {
     case resamplingFailed
     case encodingFailed
     case decodingFailed
+    case recordingFailed
 
     var errorDescription: String? {
         switch self {
@@ -1022,6 +1096,8 @@ enum AudioPipelineError: LocalizedError {
             return "AMR 编码失败"
         case .decodingFailed:
             return "AMR 解码失败"
+        case .recordingFailed:
+            return "录音失败"
         }
     }
 }

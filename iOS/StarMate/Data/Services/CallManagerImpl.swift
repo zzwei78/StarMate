@@ -49,6 +49,10 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
     private var frameCount = 0
     private var downlinkFrameCount = 0
 
+    // 时间戳记录
+    private var lastCallManagerDownlinkTime: Date?
+    private var lastCallManagerUplinkTime: Date?
+
     // MARK: - Initialization
 
     init(
@@ -74,7 +78,21 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         voiceClient.onAmrFrameReceived = { [weak self] amrData in
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
+                let now = Date()
                 self.downlinkFrameCount += 1
+
+                // 计算接收间隔
+                if let lastTime = self.lastCallManagerDownlinkTime {
+                    let interval = now.timeIntervalSince(lastTime) * 1000
+                    if self.downlinkFrameCount <= 20 || abs(interval - 20) > 5 {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "HH:mm:ss.SSS"
+                        let timestamp = formatter.string(from: now)
+                        print("[\(timestamp)] [CallManager] 📥 DL RX #\(self.downlinkFrameCount), interval: \(String(format: "%.1f", interval))ms")
+                    }
+                }
+                self.lastCallManagerDownlinkTime = now
+
                 if self.downlinkFrameCount % 50 == 0 {
                     print("[CallManager] 📥 Received AMR frames: \(self.downlinkFrameCount)")
                 }
@@ -615,7 +633,21 @@ extension CallManagerImpl: AudioPipelineDelegate {
     func audioPipeline(_ pipeline: AudioPipelineManager, didEncodeAmrFrame frame: Data) {
         // 发送 AMR 帧到设备
         Task {
+            let now = Date()
             frameCount += 1
+
+            // 计算发送间隔
+            if let lastTime = lastCallManagerUplinkTime {
+                let interval = now.timeIntervalSince(lastTime) * 1000
+                if frameCount <= 20 || abs(interval - 20) > 5 {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "HH:mm:ss.SSS"
+                    let timestamp = formatter.string(from: now)
+                    print("[\(timestamp)] [CallManager] 📤 UL TX #\(frameCount), interval: \(String(format: "%.1f", interval))ms")
+                }
+            }
+            lastCallManagerUplinkTime = now
+
             if frameCount % 10 == 0 {  // 每10帧打印一次（约200ms）
                 print("[CallManager] 📤 Sent AMR frame #\(frameCount) (size: \(frame.count)B)")
             }

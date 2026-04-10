@@ -83,6 +83,12 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
     private(set) var bytesSent: Int = 0
     private(set) var bytesReceived: Int = 0
 
+    /// 上行帧时间戳记录（用于计算发送间隔）
+    private var lastUplinkSendTime: Date?
+
+    /// 下行帧时间戳记录（用于计算接收间隔）
+    private var lastDownlinkReceiveTime: Date?
+
     // MARK: - Initialization
 
     init() {
@@ -214,12 +220,26 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
         }
 
         // 发送到 BLE (Voice GATT Server 必须使用 writeWithoutResponse)
+        let sendTime = Date()
         peripheral.writeValue(packet, for: characteristic, type: .withoutResponse)
 
         // 更新统计
         framesSent += 1
         bytesSent += packet.count
         sequenceCounter += 1
+
+        // 计算发送间隔并打印
+        if let lastTime = lastUplinkSendTime {
+            let interval = sendTime.timeIntervalSince(lastTime) * 1000
+            // 打印前 20 帧的间隔，或间隔异常时
+            if framesSent <= 20 || abs(interval - 20) > 5 {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "HH:mm:ss.SSS"
+                let timestamp = formatter.string(from: sendTime)
+                print("[\(timestamp)] [VoiceService] 📤 BLE TX #\(framesSent), interval: \(String(format: "%.1f", interval))ms")
+            }
+        }
+        lastUplinkSendTime = sendTime
 
         #if DEBUG
         if framesSent % 50 == 0 {  // 每1秒
@@ -308,12 +328,26 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
             // 解码 base64 并回调
             if let base64String = String(data: base64Data, encoding: .utf8),
                let amrData = Data(base64Encoded: base64String) {
+                let receiveTime = Date()
                 framesReceived += 1
 
                 if framesReceived == 1 {
                     print("[VoiceService] ✅ FIRST AMR frame decoded! size: \(amrData.count)B")
                     print("[VoiceService]    - Base64: \(base64String)")
                 }
+
+                // 计算接收间隔并打印
+                if let lastTime = lastDownlinkReceiveTime {
+                    let interval = receiveTime.timeIntervalSince(lastTime) * 1000
+                    // 打印前 20 帧的间隔，或间隔异常时
+                    if framesReceived <= 20 || abs(interval - 20) > 5 {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "HH:mm:ss.SSS"
+                        let timestamp = formatter.string(from: receiveTime)
+                        print("[\(timestamp)] [VoiceService] 📥 BLE RX #\(framesReceived), interval: \(String(format: "%.1f", interval))ms")
+                    }
+                }
+                lastDownlinkReceiveTime = receiveTime
 
                 // 回调 AMR 帧
                 onAmrFrameReceived?(amrData)
