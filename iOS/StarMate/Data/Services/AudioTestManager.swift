@@ -1,6 +1,27 @@
 import AVFoundation
 import Foundation
 
+// MARK: - AMR Test Audio Data Helper
+
+/// 获取预编码的 AMR-NB 音频数据（来自 amr_source_file.h）
+///
+/// 该文件包含预编码的 AMR-NB 音频数据，每个包 32 字节
+func getAmrTestData() -> (data: Data, frameCount: Int) {
+    // 使用 C 辅助函数获取数据指针和长度
+    guard let dataPtr = get_amr_test_data() else {
+        return (Data(), 0)
+    }
+
+    let totalBytes = Int(get_amr_test_data_length())
+    let frameSize = 32
+    let frameCount = totalBytes / frameSize
+
+    // 从 C 数组创建 Data
+    let data = Data(bytes: dataPtr, count: totalBytes)
+
+    return (data, frameCount)
+}
+
 // MARK: - Audio Test Manager
 
 /// 音频测试管理器（与主代码解耦的测试模块）
@@ -86,11 +107,11 @@ final class AudioTestManager: ObservableObject {
         print("[AudioTest] Starting test AMR audio playback...")
 
         // 使用内置测试音频或从 Bundle 加载
-        if let testAmrData = generateTestAmrSequence() {
+        if let testAmrData = loadTestAmrSequence() {
             playAmrFrames(testAmrData, loop: true)
         } else {
-            statusMessage = "无法生成测试音频"
-            print("[AudioTest] Failed to generate test AMR data")
+            statusMessage = "无法加载测试音频"
+            print("[AudioTest] Failed to load test AMR data")
         }
     }
 
@@ -153,61 +174,100 @@ final class AudioTestManager: ObservableObject {
 
     /// 播放单个 AMR 帧
     private func playAmrFrame(_ amrFrame: Data) {
-        // 解码 AMR → PCM
+        // 解码 AMR → PCM (8kHz)
         let pcmData = amrDecoder.decode(amrData: amrFrame)
         guard !pcmData.isEmpty else { return }
 
-        // 播放 PCM
-        guard let buffer = createPcmBuffer(from: pcmData) else { return }
+        // 转换为 48kHz PCM 以匹配播放节点
+        guard let buffer48kHz = convertToPlaybackFormat(pcmData: pcmData) else { return }
 
-        playerNode.scheduleBuffer(buffer, at: nil, options: .interrupts)
+        playerNode.scheduleBuffer(buffer48kHz, at: nil, options: .interrupts)
     }
 
-    /// 生成测试 AMR 帧序列（生成简单的测试音调）
-    private func generateTestAmrSequence() -> [Data]? {
-        // 生成 3 秒的测试音频（150 帧 @ 20ms/frame）
+    /// 将 8kHz PCM 转换为 48kHz PCM（用于播放）
+    private func convertToPlaybackFormat(pcmData: Data) -> AVAudioPCMBuffer? {
+        // 输入: 8kHz, 16-bit, mono (320 bytes = 160 samples)
+        // 输出: 48kHz, 16-bit, mono (960 samples)
+
+        let inputSamples = pcmData.count / 2  // 16-bit = 2 bytes per sample
+        let outputSamples = inputSamples * 6  // 8kHz → 48kHz = 6x
+
+        guard let playbackFormat = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: 48000,
+            channels: 1,
+            interleaved: true
+        ) else {
+            return nil
+        }
+
+        guard let buffer = AVAudioPCMBuffer(
+            pcmFormat: playbackFormat,
+            frameCapacity: AVAudioFrameCount(outputSamples)
+        ) else {
+            return nil
+        }
+
+        buffer.frameLength = AVAudioFrameCount(outputSamples)
+
+        // 线性插值 6x 上采样
+        pcmData.withUnsafeBytes { src in
+            guard let srcPtr = src.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
+            let dstPtr = buffer.int16ChannelData![0]
+
+            for i in 0..<inputSamples {
+                let currentSample = Float(srcPtr[i])
+
+                // 线性插值：每个输入样本产生 6 个输出样本
+                for j in 0..<6 {
+                    let t = Float(j) / 6.0
+
+                    // 获取下一个样本（用于插值）
+                    let nextSample: Float
+                    if i < inputSamples - 1 {
+                        nextSample = Float(srcPtr[i + 1])
+                    } else {
+                        nextSample = currentSample
+                    }
+
+                    // 线性插值
+                    let interpolated = currentSample * (1.0 - t) + nextSample * t
+                    dstPtr[i * 6 + j] = Int16(max(-32768, min(32767, interpolated)))
+                }
+            }
+        }
+
+        return buffer
+    }
+
+    /// 加载测试 AMR 帧序列（从预编码的音频文件）
+    private func loadTestAmrSequence() -> [Data]? {
+        let (data, frameCount) = getAmrTestData()
+        let frameSize = 32
+
+        guard frameCount > 0 else {
+            print("[AudioTest] No AMR test data available")
+            return nil
+        }
+
         var frames: [Data] = []
-        let encoder = AmrNbEncoder(dtx: false)
 
-        // 生成 440Hz (A4) 测试音调
-        let sampleRate: Double = 8000
-        let frequency: Double = 440
-        let samplesPerFrame = 160
+        // 从 Data 中提取每一帧
+        for frameIndex in 0..<frameCount {
+            let offset = frameIndex * frameSize
 
-        for frameIndex in 0..<150 {
-            var pcmSamples = [Int16](repeating: 0, count: samplesPerFrame)
-
-            for i in 0..<samplesPerFrame {
-                let t = Double(frameIndex * samplesPerFrame + i) / sampleRate
-                let amplitude = Double(Int16.max) * 0.3  // 30% 音量
-
-                // 生成正弦波
-                let sample = sin(2.0 * .pi * frequency * t) * amplitude
-                pcmSamples[i] = Int16(sample)
+            // 确保不超出数据范围
+            guard offset + frameSize <= data.count else {
+                break
             }
 
-            let pcmData = Data(bytes: pcmSamples, count: samplesPerFrame * 2)
-            if let amrFrame = encodeFrameDirectly(pcmData: pcmData) {
-                frames.append(amrFrame)
-            }
+            // 提取一帧
+            let frameData = data.subdata(in: offset..<offset + frameSize)
+            frames.append(frameData)
         }
 
-        print("[AudioTest] Generated \(frames.count) test AMR frames")
+        print("[AudioTest] Loaded \(frames.count) AMR frames from test file (\(frames.count * 20 / 1000)s)")
         return frames.isEmpty ? nil : frames
-    }
-
-    /// 直接编码 PCM 到 AMR
-    private func encodeFrameDirectly(pcmData: Data) -> Data? {
-        guard pcmData.count >= 320 else { return nil }
-
-        return pcmData.withUnsafeBytes { ptr in
-            guard let base = ptr.baseAddress?.assumingMemoryBound(to: Int16.self) else {
-                return nil
-            }
-
-            let encoder = AmrNbEncoder(dtx: false)
-            return encoder.encode(pcmData: pcmData)
-        }
     }
 
     /// 从 Data 创建 PCM 缓冲区
@@ -266,7 +326,7 @@ final class AudioTestManager: ObservableObject {
         lastLoopbackTime = nil
 
         // 生成测试 AMR 帧
-        testAmrFrames = generateTestAmrSequence() ?? []
+        testAmrFrames = loadTestAmrSequence() ?? []
         guard !testAmrFrames.isEmpty else {
             statusMessage = "无法生成测试帧"
             isLoopbackTestActive = false
@@ -388,13 +448,4 @@ final class AudioTestManager: ObservableObject {
         // cleanup() 需要 @MainActor，在 deinit 中无法调用
         // 实际清理由 stopTestAmrAudio 和 stopLoopbackTest 处理
     }
-}
-
-// MARK: - Logging Helper
-
-private func Log(_ module: String, _ message: String) {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm:ss.SSS"
-    let timestamp = formatter.string(from: Date())
-    print("[\(timestamp)] [\(module)] \(message)")
 }
