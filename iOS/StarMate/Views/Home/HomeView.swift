@@ -100,6 +100,9 @@ struct HomeView: View {
                         showScanDialog = false
                         scanTask?.cancel()
                         scanTask = nil
+                        // 停止扫描
+                        bleManager.stopScan()
+                        // 连接设备
                         bleManager.connect(device.address)
                     },
                     onRescan: {
@@ -183,14 +186,17 @@ struct HomeView: View {
         let isConnected = state.isConnected
 
         if isConnected && !wasConnected {
-            // Just connected - refresh device info
+            // Just connected - refresh device info immediately
             Task {
-                try? await Task.sleep(nanoseconds: 900_000_000) // 900ms
+                // 立即刷新一次
                 await refreshDeviceInfoInternal()
-                try? await Task.sleep(nanoseconds: 900_000_000)
+                // 短暂延迟后再刷新
+                try? await Task.sleep(nanoseconds: 500_000_000)
                 await refreshDeviceInfoInternal()
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                await refreshDeviceInfoInternal()
+                startAutoRefreshTimer()
             }
-            startAutoRefreshTimer()
         } else if !isConnected {
             // Disconnected - clear state
             batteryInfo = nil

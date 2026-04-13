@@ -257,6 +257,80 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
         return await sendAmrFrame(data)
     }
 
+    /// 批量发送多个 AMR 帧（一次 BLE 写入发送多帧，减少传输次数）
+    ///
+    /// 将多帧 AMR 数据先拼接，然后做一次 base64 编码：AT^AUDPCM="<combined_base64>"
+    /// 这样比逗号分隔的方式更高效
+    ///
+    /// - Parameter frames: AMR 帧数组
+    /// - Returns: 发送结果
+    func sendAmrFrames(_ frames: [Data]) async -> Result<Void, Error> {
+        guard let peripheral = peripheral else {
+            return .failure(VoiceServiceError.notConnected)
+        }
+
+        let char = voiceInChar ?? voiceDataChar
+        guard let characteristic = char else {
+            return .failure(VoiceServiceError.characteristicNotFound)
+        }
+
+        // 将多帧 AMR 数据拼接，然后做一次 base64 编码
+        var combinedAmrData = Data()
+        for frame in frames {
+            combinedAmrData.append(frame)
+        }
+
+        // 一次性 base64 编码
+        let base64 = combinedAmrData.base64EncodedString()
+        let packet = "\(Constants.prefix)\(base64)\(Constants.suffix)"
+        guard let packetData = packet.data(using: .utf8) else {
+            return .failure(VoiceServiceError.encodingFailed)
+        }
+
+        // 打印前几个包的详细信息
+        if framesSent < 10 {
+            print("[VoiceService] 📤 TX batch: \(frames.count) frames, AMR: \(combinedAmrData.count)B, packet: \(packetData.count)B")
+            // 打印每帧前 4 字节用于验证
+            for i in 0..<min(3, frames.count) {
+                let frame = frames[i]
+                let prefix = Array(frame.prefix(4))
+                print("[VoiceService]    Frame[\(i)]: \(prefix.map { String(format: "%02X", $0) }.joined(separator: " "))")
+            }
+            print("[VoiceService]    Base64: \(base64.prefix(80))...")
+        }
+
+        // 检查包大小
+        guard packetData.count <= Constants.maxPacketSize else {
+            print("[VoiceService] ⚠️ Batch packet too large (\(packetData.count)B), falling back to individual sends")
+            // 包太大，回退到单独发送
+            for frame in frames {
+                let result = await sendAmrFrame(frame)
+                if case .failure = result {
+                    return result
+                }
+            }
+            return .success(())
+        }
+
+        let sendTime = Date()
+        peripheral.writeValue(packetData, for: characteristic, type: .withoutResponse)
+
+        // 更新统计
+        framesSent += frames.count
+        bytesSent += packetData.count
+        sequenceCounter += 1
+
+        if let lastTime = lastUplinkSendTime {
+            let interval = sendTime.timeIntervalSince(lastTime) * 1000
+            if framesSent <= 20 || interval > 50 {
+                print("[VoiceService] 📤 BLE TX batch #\(framesSent - frames.count + 1)-#\(framesSent), \(frames.count) frames, size: \(packetData.count)B, interval: \(String(format: "%.1f", interval))ms")
+            }
+        }
+        lastUplinkSendTime = sendTime
+
+        return .success(())
+    }
+
     // MARK: - Private Methods
 
     /// 包装 AMR 帧为 AT^AUDPCM 数据包
@@ -329,11 +403,46 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
             if let base64String = String(data: base64Data, encoding: .utf8),
                let amrData = Data(base64Encoded: base64String) {
                 let receiveTime = Date()
-                framesReceived += 1
 
-                if framesReceived == 1 {
-                    print("[VoiceService] ✅ FIRST AMR frame decoded! size: \(amrData.count)B")
-                    print("[VoiceService]    - Base64: \(base64String)")
+                // 打印前 10 包的详细信息
+                if framesReceived < 10 {
+                    print("[VoiceService] ✅ AMR decoded: \(amrData.count)B, Base64: \(base64String.prefix(60))...")
+                }
+
+                // 检查是否为多帧数据（32 字节的倍数，且 > 32 字节）
+                let amrFrameSize = 32
+                let frameCount = amrData.count / amrFrameSize
+                let isMultiFrame = frameCount > 1 && amrData.count % amrFrameSize == 0
+
+                if isMultiFrame {
+                    // 多帧数据：按 32 字节分帧回调
+                    if framesReceived < 10 {
+                        print("[VoiceService] 📦 Multi-frame: \(frameCount) frames (total \(amrData.count)B)")
+                        // 打印每帧的前几个字节，用于验证数据
+                        for i in 0..<min(3, frameCount) {
+                            let start = i * amrFrameSize
+                            let end = min(start + 4, amrData.count)
+                            let prefix = Array(amrData[start..<end])
+                            print("[VoiceService]    Frame[\(i)] prefix: \(prefix.map { String(format: "%02X", $0) }.joined(separator: " "))")
+                        }
+                    }
+
+                    for i in 0..<frameCount {
+                        let start = i * amrFrameSize
+                        let end = start + amrFrameSize
+                        let frame = amrData[start..<end]
+
+                        framesReceived += 1
+                        onAmrFrameReceived?(Data(frame))
+                    }
+                } else {
+                    // 单帧数据：直接回调
+                    if framesReceived < 10 && amrData.count > 0 {
+                        let prefix = Array(amrData.prefix(4))
+                        print("[VoiceService] 📦 Single-frame: \(amrData.count)B, prefix: \(prefix.map { String(format: "%02X", $0) }.joined(separator: " "))")
+                    }
+                    framesReceived += 1
+                    onAmrFrameReceived?(amrData)
                 }
 
                 // 计算接收间隔并打印
@@ -349,16 +458,13 @@ final class VoiceServiceClientImpl: VoiceServiceClientProtocol {
                 }
                 lastDownlinkReceiveTime = receiveTime
 
-                // 回调 AMR 帧
-                onAmrFrameReceived?(amrData)
-
                 // 日志 (每 50 帧打印一次)
                 if framesReceived % 50 == 0 {
-                    print("[VoiceService] 📥 Received AMR frames: \(framesReceived) (size: \(amrData.count)B)")
+                    print("[VoiceService] 📥 Received AMR frames: \(framesReceived)")
                 }
             } else {
                 print("[VoiceService] ⚠️ Failed to decode base64 data")
-                print("[VoiceService]    - Base64 data: \(base64Data as NSData)")
+                print("[VoiceService]    - Base64 data (hex): \(base64Data.map { String(format: "%02X", $0) }.joined(separator: " "))")
             }
         }
     }

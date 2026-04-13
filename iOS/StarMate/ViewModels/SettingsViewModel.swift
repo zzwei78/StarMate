@@ -28,7 +28,7 @@ class SettingsViewModel: ObservableObject {
 
     // MARK: - Dependencies
 
-    private let bleManager: BleManagerImpl
+    private var bleManager: BleManagerImpl  // 改为 var 以允许更新
     private var systemClient: SystemServiceClientImpl {
         return bleManager.getSystemClient() as! SystemServiceClientImpl
     }
@@ -57,9 +57,35 @@ class SettingsViewModel: ObservableObject {
 
         // 初始化音频测试管理器
         let voiceClient = bleManager.getVoiceClient() as? VoiceServiceClientImpl
-        self.audioTestManager = AudioTestManager(voiceClient: voiceClient)
+        self.audioTestManager = AudioTestManager(voiceClient: voiceClient, bleManager: bleManager)
 
         setupBindings()
+    }
+
+    /// 更新 BLE Manager（从 Environment 注入）
+    func updateBleManager(_ newBleManager: BleManagerImpl) {
+        // 如果是同一个实例，不需要更新
+        if bleManager === newBleManager { return }
+
+        bleManager = newBleManager
+
+        // 重新设置绑定
+        cancellables.removeAll()
+        setupBindings()
+
+        // 更新音频测试管理器的 voice client 和 bleManager
+        let voiceClient = bleManager.getVoiceClient() as? VoiceServiceClientImpl
+        audioTestManager.updateVoiceClient(voiceClient)
+        audioTestManager.updateBleManager(newBleManager)
+
+        // 立即同步当前状态
+        self.connectionState = bleManager.connectionState
+        self.isConnected = bleManager.connectionState.isConnected
+        if case .connected(let address, _) = bleManager.connectionState {
+            self.connectedDeviceAddress = address
+        }
+
+        print("[SettingsViewModel] Updated with shared bleManager, isConnected: \(isConnected)")
     }
 
     private func setupBindings() {

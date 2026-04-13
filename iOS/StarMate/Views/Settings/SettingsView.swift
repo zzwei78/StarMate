@@ -1,8 +1,44 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import QuickLook
+
+// MARK: - QuickLook Preview Wrapper
+struct QuickLookPreview: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let controller = QLPreviewController()
+        controller.dataSource = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ controller: QLPreviewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(url: url)
+    }
+
+    class Coordinator: NSObject, QLPreviewControllerDataSource {
+        let url: URL
+
+        init(url: URL) {
+            self.url = url
+        }
+
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
+            return 1
+        }
+
+        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
+            return url as QLPreviewItem
+        }
+    }
+}
 
 struct SettingsView: View {
+    @EnvironmentObject private var bleManager: BLEManager
     @StateObject private var viewModel: SettingsViewModel
+    @ObservedObject private var audioTestManager: AudioTestManager
 
     // Dialog states
     @State private var showRebootMcuDialog = false
@@ -13,12 +49,19 @@ struct SettingsView: View {
     // File picker state
     @State private var showFilePicker = false
     @State private var otaTarget: OtaTarget?
+    @State private var showWavPreview = false
 
     @MainActor
-    init(bleManager: BLEManager? = nil) {
-        let manager = bleManager ?? BLEManager()
-        _viewModel = StateObject(wrappedValue: SettingsViewModel(bleManager: manager))
+    init() {
+        // 使用 @EnvironmentObject 的方式获取 shared bleManager
+        // 但由于 init 不能直接访问 @EnvironmentObject，这里使用临时实例
+        // 实际的 bleManager 会在 body 中通过 @EnvironmentObject 获取
+        let tempManager = BLEManager()
+        let vm = SettingsViewModel(bleManager: tempManager)
+        _viewModel = StateObject(wrappedValue: vm)
+        _audioTestManager = ObservedObject(wrappedValue: vm.audioTestManager)
     }
+
 
     var body: some View {
         NavigationStack {
@@ -215,12 +258,31 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
 
                             Button(action: {
-                                viewModel.audioTestManager.playTestAmrAudio()
+                                audioTestManager.playTestAmrAudio()
                             }) {
                                 HStack {
-                                    Image(systemName: viewModel.audioTestManager.isPlayingTestAudio ? "stop.circle.fill" : "play.circle.fill")
-                                        .foregroundColor(viewModel.audioTestManager.isPlayingTestAudio ? .red : .green)
-                                    Text(viewModel.audioTestManager.isPlayingTestAudio ? "停止播放" : "播放测试音频")
+                                    Image(systemName: audioTestManager.isPlayingTestAudio ? "stop.circle.fill" : "play.circle.fill")
+                                        .foregroundColor(audioTestManager.isPlayingTestAudio ? .red : .green)
+                                    Text(audioTestManager.isPlayingTestAudio ? "停止播放" : "播放测试音频")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        // 测试: 保存解码后的 WAV 文件
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("调试工具")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            Button(action: {
+                                audioTestManager.decodeAndSaveAsWav()
+                            }) {
+                                HStack {
+                                    Image(systemName: "doc.text")
+                                        .foregroundColor(.blue)
+                                    Text("解码 AMR 并保存 WAV")
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -236,12 +298,12 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
 
                             Button(action: {
-                                viewModel.audioTestManager.startLoopbackTest()
+                                audioTestManager.startLoopbackTest()
                             }) {
                                 HStack {
-                                    Image(systemName: viewModel.audioTestManager.isLoopbackTestActive ? "arrow.triangle.2.circlepath" : "arrow.circlepath")
-                                        .foregroundColor(viewModel.audioTestManager.isLoopbackTestActive ? .orange : .blue)
-                                    Text(viewModel.audioTestManager.isLoopbackTestActive ? "停止回环测试" : "开始回环测试")
+                                    Image(systemName: audioTestManager.isLoopbackTestActive ? "arrow.triangle.2.circlepath" : "arrow.circlepath")
+                                        .foregroundColor(audioTestManager.isLoopbackTestActive ? .orange : .blue)
+                                    Text(audioTestManager.isLoopbackTestActive ? "停止回环测试" : "开始回环测试")
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -249,16 +311,16 @@ struct SettingsView: View {
                             .disabled(!viewModel.isConnected)
 
                             // 回环统计
-                            if viewModel.audioTestManager.isLoopbackTestActive {
+                            if audioTestManager.isLoopbackTestActive {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("发送: \(viewModel.audioTestManager.loopbackStats.framesSent) 帧")
+                                    Text("发送: \(audioTestManager.loopbackStats.framesSent) 帧")
                                         .font(.caption)
                                         .foregroundColor(.green)
-                                    Text("接收: \(viewModel.audioTestManager.loopbackStats.framesReceived) 帧")
+                                    Text("接收: \(audioTestManager.loopbackStats.framesReceived) 帧")
                                         .font(.caption)
                                         .foregroundColor(.blue)
-                                    if viewModel.audioTestManager.loopbackStats.averageLatency > 0 {
-                                        Text("延迟: \(String(format: "%.1f", viewModel.audioTestManager.loopbackStats.averageLatency))ms")
+                                    if audioTestManager.loopbackStats.averageLatency > 0 {
+                                        Text("延迟: \(String(format: "%.1f", audioTestManager.loopbackStats.averageLatency))ms")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -268,11 +330,30 @@ struct SettingsView: View {
                         }
 
                         // 状态消息
-                        if !viewModel.audioTestManager.statusMessage.isEmpty {
-                            Text(viewModel.audioTestManager.statusMessage)
+                        if !audioTestManager.statusMessage.isEmpty {
+                            Text(audioTestManager.statusMessage)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.top, 4)
+                        }
+
+                        // WAV 预览按钮
+                        if let wavURL = audioTestManager.savedWavFilePath {
+                            Button(action: {
+                                showWavPreview = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "play.square")
+                                    Text("播放 WAV 文件")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                            }
+                            .sheet(isPresented: $showWavPreview) {
+                                if let wavURL = audioTestManager.savedWavFilePath {
+                                    QuickLookPreview(url: wavURL)
+                                }
+                            }
                         }
                     }
                     .padding(.vertical, 8)
@@ -370,6 +451,10 @@ struct SettingsView: View {
             } message: {
                 Text("确定要开启天通卫星模块吗？")
             }
+        }
+        .onAppear {
+            // 使用正确的 shared bleManager 更新 viewModel
+            viewModel.updateBleManager(bleManager)
         }
     }
 
@@ -666,5 +751,6 @@ struct OTASectionView: View {
 }
 
 #Preview {
-    SettingsView(bleManager: BLEManager())
+    SettingsView()
+        .environmentObject(BLEManager() as BLEManager)
 }

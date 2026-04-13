@@ -126,9 +126,10 @@ final class AudioPipelineManager: AudioPipelineProtocol {
     private enum Constants {
         static let audioBufferSize: AVAudioFrameCount = 1024
         static let frameDurationNs: UInt64 = 20_000_000
-        static let playbackIntervalMs: UInt64 = 20  // 按 20ms 固定间隔播放
-        static let maxPlaybackQueueFrames: Int = 50  // 增加缓冲区大小
-        static let minQueueFramesBeforePlay: Int = 5   // 最小缓冲帧数再开始播放
+        static let playbackIntervalMs: UInt64 = 100  // 100ms 间隔
+        static let framesPerPlayback: Int = 5   // 每次播放 5 帧 = 100ms (与间隔匹配)
+        static let maxPlaybackQueueFrames: Int = 50  // 最大缓冲 50 帧 = 1秒
+        static let minQueueFramesBeforePlay: Int = 10   // 最小缓冲 10 帧 = 200ms 再开始播放
     }
 
     // MARK: - Audio Processing Configuration
@@ -269,15 +270,27 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         // 附加播放节点
         audioEngine.attach(playerNode)
 
-        // 连接播放节点到输出 (使用 48kHz 播放格式，与 AudioSession 匹配)
+        // 使用 8kHz 格式连接播放节点
         let mainMixer = audioEngine.mainMixerNode
-        audioEngine.connect(playerNode, to: mainMixer, format: playbackFormat)
+
+        // 创建 8kHz 播放格式
+        guard let playbackFormat8kHz = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: 8000.0,
+            channels: 1,
+            interleaved: true
+        ) else {
+            Log("AudioPipeline", "Failed to create 8kHz playback format")
+            return
+        }
+
+        audioEngine.connect(playerNode, to: mainMixer, format: playbackFormat8kHz)
 
         // 设置播放增益
         playerNode.volume = playbackGain
         mainMixer.outputVolume = 1.0
 
-        Log("AudioPipeline", "Player engine configured (playback only)")
+        Log("AudioPipeline", "Player engine configured (8kHz direct playback)")
     }
 
     /// 配置音频会话
@@ -567,9 +580,9 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             if let lastTime = lastUplinkEncodeTime {
                 let interval = now.timeIntervalSince(lastTime) * 1000
                 // 打印前 20 帧的间隔，或间隔异常时
-                if encodeFrameCount <= 20 || abs(interval - 20) > 10 {
-                    Log("AudioPipeline", "UL encode #\(encodeFrameCount), interval: \(String(format: "%.1f", interval))ms")
-                }
+                // if encodeFrameCount <= 20 || abs(interval - 20) > 10 {
+                //     Log("AudioPipeline", "UL encode #\(encodeFrameCount), interval: \(String(format: "%.1f", interval))ms")
+                // }
             }
             lastUplinkEncodeTime = now
 
@@ -670,9 +683,9 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         if let lastTime = lastDownlinkTime {
             let interval = now.timeIntervalSince(lastTime) * 1000  // 转换为毫秒
             // 打印前 20 帧的间隔，或间隔异常时
-            if decodeFrameCount <= 20 || abs(interval - 20) > 10 {
-                Log("AudioPipeline", "DL frame #\(decodeFrameCount), interval: \(String(format: "%.1f", interval))ms")
-            }
+            // if decodeFrameCount <= 20 || abs(interval - 20) > 10 {
+            //     Log("AudioPipeline", "DL frame #\(decodeFrameCount), interval: \(String(format: "%.1f", interval))ms")
+            // }
         }
         lastDownlinkTime = now
 
@@ -705,6 +718,7 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         // 3. 添加到播放队列
         playbackLock.lock()
         playbackQueue.append(pcmData)
+        let queueFrames = playbackQueue.count / TargetAudioFormat.bytesPerFrame
 
         // 限制队列大小
         let maxQueueSize = Constants.maxPlaybackQueueFrames * TargetAudioFormat.bytesPerFrame
@@ -714,6 +728,11 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             print("[AudioPipeline] ⚠️ Playback queue overflow, dropped \(excess) bytes")
         }
         playbackLock.unlock()
+
+        // 每 50 帧打印缓冲状态
+        if decodeFrameCount % 50 == 0 {
+            print("[AudioPipeline] 📊 DL buffer: \(queueFrames) frames (\(queueFrames * 20)ms)")
+        }
 
         // 确保音频引擎保持运行状态
         if !audioEngine.isRunning {
@@ -801,32 +820,38 @@ final class AudioPipelineManager: AudioPipelineProtocol {
         let queueSize = playbackQueue.count
         let framesAvailable = queueSize / TargetAudioFormat.bytesPerFrame
 
-        // 队列为空，跳过此帧（静音）
+        // 队列为空，停止播放（没有信号时不播放）
         guard playbackQueue.count >= TargetAudioFormat.bytesPerFrame else {
             playbackLock.unlock()
-            if playbackFrameCount > 0 && playbackFrameCount % 50 == 0 {
-                Log("AudioPipeline", "Queue underrun at frame #\(playbackFrameCount), frames: \(framesAvailable)")
+            if playerNode.isPlaying {
+                playerNode.stop()
+                if playbackFrameCount > 0 && playbackFrameCount % 50 == 0 {
+                    print("[AudioPipeline] ⚠️ No signal, stopped playback (buffer: \(framesAvailable) frames)")
+                }
             }
             return
         }
 
-        // 提取一帧
-        let frame = playbackQueue.prefix(TargetAudioFormat.bytesPerFrame)
-        playbackQueue.removeFirst(TargetAudioFormat.bytesPerFrame)
+        // 累积多帧一起播放，减少调度间隙
+        let framesToSchedule = min(Constants.framesPerPlayback, framesAvailable)
+        let totalBytes = framesToSchedule * TargetAudioFormat.bytesPerFrame
+        let framesData = playbackQueue.prefix(totalBytes)
+        playbackQueue.removeFirst(totalBytes)
+        let remainingFrames = playbackQueue.count / TargetAudioFormat.bytesPerFrame
         playbackLock.unlock()
 
-        playbackFrameCount += 1
-        if playbackFrameCount == 1 {
-            Log("AudioPipeline", "First frame playing (gain: \(playbackGain)x)")
+        playbackFrameCount += framesToSchedule
+        if playbackFrameCount <= framesToSchedule {
+            print("[AudioPipeline] 🎵 First frame playing (batch: \(framesToSchedule) frames = \(framesToSchedule * 20)ms, buffer: \(remainingFrames) frames)")
         } else if playbackFrameCount % 100 == 0 {
-            Log("AudioPipeline", "Playing frame #\(playbackFrameCount), queue: \(framesAvailable)")
+            print("[AudioPipeline] 🎵 Playing frame #\(playbackFrameCount), buffer: \(remainingFrames) frames (\(remainingFrames * 20)ms)")
         }
 
-        // 创建音频缓冲区并播放
-        playPcmData(frame)
+        // 创建音频缓冲区并播放（一次性调度多帧）
+        playPcmData(Data(framesData))
     }
 
-    /// 播放 PCM 数据 (8kHz PCM → 48kHz 转换后播放)
+    /// 播放 PCM 数据 (累积多帧后调度，减少间隙)
     private func playPcmData(_ pcmData: Data) {
         // 确保音频引擎在运行
         if !audioEngine.isRunning {
@@ -843,69 +868,17 @@ final class AudioPipelineManager: AudioPipelineProtocol {
             playerNode.play()
         }
 
-        // 将 8kHz PCM 转换为 48kHz PCM 并播放
-        guard let buffer48kHz = convertToPlaybackFormat(pcmData: pcmData) else {
+        // 直接创建 8kHz PCM 缓冲区并播放
+        guard let buffer = createPcmBuffer(from: pcmData) else {
             return
         }
 
-        playerNode.scheduleBuffer(buffer48kHz, at: nil, options: .interrupts)
+        playerNode.scheduleBuffer(buffer, at: nil, options: .interrupts)
 
         if !firstFrameScheduled {
             firstFrameScheduled = true
-            Log("AudioPipeline", "First frame scheduled (\(buffer48kHz.frameLength) samples, gain: \(playbackGain)x)")
+            Log("AudioPipeline", "First frame scheduled (\(buffer.frameLength) samples at 8kHz)")
         }
-    }
-
-    /// 将 8kHz PCM 转换为 48kHz PCM，并应用音量增益
-    ///
-    /// 使用线性插值来改善音频质量，避免"阶梯感"
-    private func convertToPlaybackFormat(pcmData: Data) -> AVAudioPCMBuffer? {
-        // 输入: 8kHz, 16-bit, mono (320 bytes = 160 samples)
-        // 输出: 48kHz, 16-bit, mono (960 samples)
-
-        let inputSamples = pcmData.count / 2  // 16-bit = 2 bytes per sample
-        let outputSamples = inputSamples * 6  // 8kHz → 48kHz = 6x
-
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: playbackFormat, frameCapacity: AVAudioFrameCount(outputSamples)) else {
-            return nil
-        }
-
-        buffer.frameLength = AVAudioFrameCount(outputSamples)
-
-        // 线性插值 + 软增益（避免硬削波）
-        let gain = playbackGain
-        pcmData.withUnsafeBytes { src in
-            guard let srcPtr = src.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
-            let dstPtr = buffer.int16ChannelData![0]
-
-            for i in 0..<inputSamples {
-                let currentSample = Float(srcPtr[i])
-
-                // 线性插值：每个输入样本产生 6 个输出样本
-                for j in 0..<6 {
-                    let t = Float(j) / 6.0
-
-                    // 获取下一个样本（用于插值）
-                    let nextSample: Float
-                    if i < inputSamples - 1 {
-                        nextSample = Float(srcPtr[i + 1])
-                    } else {
-                        nextSample = currentSample
-                    }
-
-                    // 线性插值
-                    let interpolated = currentSample * (1.0 - t) + nextSample * t
-
-                    // 应用软增益（使用 tanh 避免硬削波）
-                    let gained = interpolated * gain
-                    let softClipped = tanh(gained / 32768.0) * 32767.0
-
-                    dstPtr[i * 6 + j] = Int16(max(-32768, min(32767, softClipped)))
-                }
-            }
-        }
-
-        return buffer
     }
 
     /// 从 Data 创建 AVAudioPCMBuffer

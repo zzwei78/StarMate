@@ -53,6 +53,13 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
     private var lastCallManagerDownlinkTime: Date?
     private var lastCallManagerUplinkTime: Date?
 
+    // AMR 帧批量发送
+    private var uplinkAmrBuffer: [Data] = []
+    private let uplinkBufferLock = NSLock()
+    private var uplinkSendTimer: DispatchSourceTimer?
+    private let framesPerBatch = 3  // 每次发送 3 帧
+    private let batchDuration: TimeInterval = 0.06  // 60ms 发送一次
+
     // MARK: - Initialization
 
     init(
@@ -84,12 +91,12 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
                 // 计算接收间隔
                 if let lastTime = self.lastCallManagerDownlinkTime {
                     let interval = now.timeIntervalSince(lastTime) * 1000
-                    if self.downlinkFrameCount <= 20 || abs(interval - 20) > 5 {
-                        let formatter = DateFormatter()
-                        formatter.dateFormat = "HH:mm:ss.SSS"
-                        let timestamp = formatter.string(from: now)
-                        print("[\(timestamp)] [CallManager] 📥 DL RX #\(self.downlinkFrameCount), interval: \(String(format: "%.1f", interval))ms")
-                    }
+                    // if self.downlinkFrameCount <= 20 || abs(interval - 20) > 5 {
+                    //     let formatter = DateFormatter()
+                    //     formatter.dateFormat = "HH:mm:ss.SSS"
+                    //     let timestamp = formatter.string(from: now)
+                    //     print("[\(timestamp)] [CallManager] 📥 DL RX #\(self.downlinkFrameCount), interval: \(String(format: "%.1f", interval))ms")
+                    // }
                 }
                 self.lastCallManagerDownlinkTime = now
 
@@ -110,6 +117,7 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
     deinit {
         urcTask?.cancel()
         callTimer?.invalidate()
+        uplinkSendTimer?.cancel()
     }
 
     // MARK: - Call Control
@@ -127,35 +135,84 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             return .failure(error)
         }
 
+        // 确保没有残留的定时器
+        uplinkSendTimer?.cancel()
+        uplinkSendTimer = nil
+        uplinkAmrBuffer.removeAll()
+
         do {
-            // 1. 更新状态为拨号中
+            // 1. 检查信号强度（拨号前必须先检查）
+            print("[CallManager] → Checking signal strength...")
+            let signalResult = await atClient.sendCommand("AT+CSQ", timeoutMs: 5000)
+
+            switch signalResult {
+            case .success(let response):
+                // 解析信号强度: +CSQ: <rssi>,<ber>
+                // rssi: 0-31 (99=unknown), 0-5 bars mapped
+                var signalOK = false
+                if response.contains("OK") || response.contains("+CSQ:") {
+                    // 提取 RSSI 值
+                    if let range = response.range(of: ": ")?.upperBound {
+                        let suffix = response[range...]
+                        let parts = suffix.split(separator: ",")
+                        if let rssiStr = parts.first, let rssi = Int(rssiStr) {
+                            if rssi == 99 {
+                                print("[CallManager] ❌ Signal unknown (rssi=99), cannot make call")
+                                callState = .idle
+                                return .failure(NSError(domain: "CallManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "无信号，无法拨号"]))
+                            } else if rssi == 0 {
+                                print("[CallManager] ❌ Signal too weak (rssi=\(rssi)), cannot make call")
+                                callState = .idle
+                                return .failure(NSError(domain: "CallManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "信号太弱，无法拨号"]))
+                            } else {
+                                print("[CallManager] ✅ Signal OK (rssi=\(rssi))")
+                                signalOK = true
+                            }
+                        }
+                    }
+                }
+
+                // 如果信号检查失败且没有获取到有效值，不允许拨号
+                if !signalOK {
+                    print("[CallManager] ❌ Signal check failed, cannot make call")
+                    callState = .idle
+                    return .failure(NSError(domain: "CallManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法获取信号信息"]))
+                }
+
+            case .failure:
+                // 信号检查命令失败，不允许拨号
+                print("[CallManager] ❌ Signal check command failed, cannot make call")
+                callState = .idle
+                return .failure(NSError(domain: "CallManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法检查信号状态"]))
+            }
+
+            // 2. 更新状态为拨号中
             callState = .dialing(phoneNumber: phoneNumber)
             print("[CallManager] 📱 State: dialing")
 
-            // 2. 确保 Voice Service 启用
+            // 3. 确保 Voice Service 启用
             print("[CallManager] → Ensuring voice service enabled...")
             try await ensureVoiceServiceEnabled()
 
-            // 3. 等待服务稳定
+            // 4. 等待服务稳定
             try await Task.sleep(nanoseconds: 400_000_000)
 
-            // 4. 发送 ATD 命令
+            // 5. 发送 ATD 命令
             print("[CallManager] 📞 Dialing \(phoneNumber)...")
             let dialResult = await atClient.sendCommand("ATD\(phoneNumber);", timeoutMs: 30000)
 
-            var dialSuccess = false
             switch dialResult {
             case .success(let response):
                 print("[CallManager] ✅ Dial response: \(response)")
-                dialSuccess = true
             case .failure(let error):
-                // 临时：即使拨号失败也继续，用于测试音频通路
+                // 拨号失败，不启动音频流水线
                 print("[CallManager] ❌ Dial failed: \(error.localizedDescription)")
-                print("[CallManager] ⚠️ TEST MODE: Continuing anyway to test audio pipeline...")
+                callState = .idle
+                currentCall = nil
+                return .failure(error)
             }
 
-            // 5. 启动音频流水线
-            // 注意：即使拨号失败，也启动音频流水线用于测试
+            // 5. 启动音频流水线（拨号成功后才启动）
             print("[CallManager] → Starting audio pipeline...")
             try await startAudioPipeline()
 
@@ -164,7 +221,6 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             print("[CallManager] ✅ Audio pipeline is ready")
 
             // 6. 更新状态为已连接
-            // 临时：测试模式下，即使拨号失败也设置为 connected
             callStartTime = Date()
             currentCall = ActiveCall(
                 phoneNumber: phoneNumber,
@@ -183,7 +239,7 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
                 await callRecorder.startRecording()
             }
 
-            print("[CallManager] ✅ Call connected (TEST MODE: dial may have failed)")
+            print("[CallManager] ✅ Call connected")
             return .success(())
 
         } catch {
@@ -499,6 +555,10 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         frameCount = 0
         uplinkPcmCount = 0
         downlinkFrameCount = 0
+        uplinkAmrBuffer.removeAll()
+
+        // 启动批量发送定时器
+        startUplinkBatchSender()
     }
 
     /// 停止音频流水线
@@ -510,10 +570,77 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         print("[CallManager]    - Total downlink frames: \(downlinkFrameCount)")
         print("[CallManager] ==================================================")
 
+        // 停止批量发送定时器
+        uplinkSendTimer?.cancel()
+        uplinkSendTimer = nil
+
         _ = await audioPipeline.stopRecording()
         _ = await audioPipeline.stopPlaying()
 
         print("[CallManager] ✅ Audio pipeline stopped")
+    }
+
+    /// 启动上行 AMR 帧批量发送定时器
+    private func startUplinkBatchSender() {
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .userInteractive))
+        timer.setEventHandler { [weak self, weak voiceClient] in
+            guard let self = self, let voiceClient = voiceClient else {
+                timer.cancel()
+                return
+            }
+
+            // 检查是否在通话中，不在则停止定时器
+            guard self.callState.isInCall else {
+                timer.cancel()
+                self.uplinkSendTimer = nil
+                return
+            }
+
+            // 收集 framesPerBatch 个帧进行批量发送
+            self.uplinkBufferLock.lock()
+            var batch: [Data] = []
+            let countToAdd = min(self.framesPerBatch, self.uplinkAmrBuffer.count)
+            if countToAdd > 0 {
+                batch = Array(self.uplinkAmrBuffer.prefix(countToAdd))
+                self.uplinkAmrBuffer.removeFirst(countToAdd)
+            }
+            let bufferCount = self.uplinkAmrBuffer.count
+            self.uplinkBufferLock.unlock()
+
+            if !batch.isEmpty {
+                let now = Date()
+
+                // 计算发送间隔
+                if let lastTime = self.lastCallManagerUplinkTime {
+                    let interval = now.timeIntervalSince(lastTime) * 1000
+                    // if self.frameCount <= 20 || abs(interval - 60) > 10 {
+                    //     let formatter = DateFormatter()
+                    //     formatter.dateFormat = "HH:mm:ss.SSS"
+                    //     let timestamp = formatter.string(from: now)
+                    //     print("[\(timestamp)] [CallManager] 📤 UL TX batch #\(self.frameCount - batch.count + 1)-#\(self.frameCount), \(batch.count) frames, interval: \(String(format: "%.1f", interval))ms, buffer: \(bufferCount)")
+                    // }
+                }
+                self.lastCallManagerUplinkTime = now
+
+                // 使用 Task { @MainActor in } 确保线程安全
+                Task { @MainActor in
+                    let result = await voiceClient.sendAmrFrames(batch)
+                    switch result {
+                    case .success:
+                        break
+                    case .failure(let error):
+                        print("[CallManager] ❌ Failed to send AMR batch: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+
+        // 设置定时器：每 60ms 发送一次
+        timer.schedule(deadline: .now(), repeating: .milliseconds(Int(batchDuration * 1000)), leeway: .milliseconds(1))
+        timer.resume()
+        uplinkSendTimer = timer
+
+        print("[CallManager] 📤 Uplink batch sender started: \(batchDuration * 1000)ms interval, \(framesPerBatch) frames/batch")
     }
 
     /// 通话后清理
@@ -629,37 +756,13 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
 
 extension CallManagerImpl: AudioPipelineDelegate {
 
-    /// 上行 AMR 帧已编码 (发送给设备)
+    /// 上行 AMR 帧已编码 (加入缓冲队列，批量发送)
     func audioPipeline(_ pipeline: AudioPipelineManager, didEncodeAmrFrame frame: Data) {
-        // 发送 AMR 帧到设备
-        Task {
-            let now = Date()
-            frameCount += 1
-
-            // 计算发送间隔
-            if let lastTime = lastCallManagerUplinkTime {
-                let interval = now.timeIntervalSince(lastTime) * 1000
-                if frameCount <= 20 || abs(interval - 20) > 5 {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "HH:mm:ss.SSS"
-                    let timestamp = formatter.string(from: now)
-                    print("[\(timestamp)] [CallManager] 📤 UL TX #\(frameCount), interval: \(String(format: "%.1f", interval))ms")
-                }
-            }
-            lastCallManagerUplinkTime = now
-
-            if frameCount % 10 == 0 {  // 每10帧打印一次（约200ms）
-                print("[CallManager] 📤 Sent AMR frame #\(frameCount) (size: \(frame.count)B)")
-            }
-
-            let result = await voiceClient.sendAmrFrame(frame)
-            switch result {
-            case .success:
-                break
-            case .failure(let error):
-                print("[CallManager] ❌ Failed to send AMR frame: \(error.localizedDescription)")
-            }
-        }
+        // 将 AMR 帧加入缓冲队列
+        uplinkBufferLock.lock()
+        uplinkAmrBuffer.append(frame)
+        frameCount += 1
+        uplinkBufferLock.unlock()
     }
 
     /// 上行 PCM 已采集 (送给录音器)

@@ -22,6 +22,7 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
     private var responseBuffer = Data()
     private var pendingResponses: [UInt8: CheckedContinuation<Result<Data, Error>, Never>] = [:]
     private var responseQueue = DispatchQueue(label: "com.starmate.system.response")
+    private var timeoutTasks: [UInt8: Task<Void, Never>] = [:]  // Track timeout tasks per sequence
 
     // Sequence tracking
     private var expectedSequence: UInt8 = 0
@@ -69,8 +70,15 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
         statusCharacteristic = nil
         responseBuffer = Data()
 
-        // Fail all pending responses
+        // Cancel all timeout tasks and fail pending responses
         responseQueue.sync {
+            // Cancel timeout tasks first
+            for (_, task) in timeoutTasks {
+                task.cancel()
+            }
+            timeoutTasks.removeAll()
+
+            // Fail all pending responses
             for (_, continuation) in pendingResponses {
                 continuation.resume(returning: .failure(NSError(domain: "SystemService", code: -1, userInfo: [NSLocalizedDescriptionKey: "GATT disconnected"])))
             }
@@ -210,14 +218,23 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
                 pendingResponses[seq] = continuation
             }
 
-            // Set timeout
-            Task {
+            // Set timeout - track the task for cancellation
+            let timeoutTask = Task {
                 try? await Task.sleep(nanoseconds: 25_000_000_000) // 25 seconds
+                // Only resume if this task hasn't been cancelled
+                guard !Task.isCancelled else { return }
+
                 responseQueue.sync {
-                    if let _ = pendingResponses.removeValue(forKey: seq) {
-                        continuation.resume(returning: .failure(NSError(domain: "SystemService", code: -3, userInfo: [NSLocalizedDescriptionKey: "Command timeout"])))
+                    if let cont = pendingResponses.removeValue(forKey: seq) {
+                        cont.resume(returning: .failure(NSError(domain: "SystemService", code: -3, userInfo: [NSLocalizedDescriptionKey: "Command timeout"])))
                     }
+                    // Clean up timeout task reference
+                    timeoutTasks.removeValue(forKey: seq)
                 }
+            }
+
+            responseQueue.sync {
+                timeoutTasks[seq] = timeoutTask
             }
 
             peripheral.writeValue(packet, for: char, type: .withResponse)
@@ -269,6 +286,12 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
             // Find and complete pending response
             responseQueue.sync {
                 print("[SystemService] RECV seq=\(parsed.seq), pending keys: \(pendingResponses.keys.map { "0x\($0)" })")
+
+                // Cancel timeout task first
+                if let timeoutTask = timeoutTasks.removeValue(forKey: parsed.seq) {
+                    timeoutTask.cancel()
+                }
+
                 if let continuation = pendingResponses.removeValue(forKey: parsed.seq) {
                     if parsed.isSuccess {
                         continuation.resume(returning: .success(parsed.data))

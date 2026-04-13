@@ -29,6 +29,7 @@ class CallManager: ObservableObject {
     private var impl: CallManagerImpl?
     private var callStartTime: Date?
     private var callTimer: Timer?
+    private var stateSyncTimer: Timer?  // 状态同步定时器
 
     // BLE Manager (需要从环境获取或创建)
     private weak var bleManager: BleManagerImpl?
@@ -84,27 +85,36 @@ class CallManager: ObservableObject {
             recordingPreferences: RecordingPreferences.shared
         )
 
-        // 监听状态变化
-        observeImplState(impl)
-
         self.impl = impl
         print("[CallManager-VM] ✅ CallManagerImpl created")
+
+        // 监听状态变化（只创建一次定时器）
+        startStateSync(impl)
+
         return impl
     }
 
-    /// 监听底层实现的状态变化
-    private func observeImplState(_ impl: CallManagerImpl) {
-        // 使用 Timer 轮询状态变化 (简化实现)
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+    /// 启动状态同步定时器
+    private func startStateSync(_ impl: CallManagerImpl) {
+        // 停止旧的定时器
+        stateSyncTimer?.invalidate()
+
+        // 使用 Timer 轮询状态变化
+        stateSyncTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self else {
-                timer.invalidate()
                 return
             }
 
-            // 同步状态
-            if self.callState != impl.callState {
-                self.callState = impl.callState
+            let implState = impl.callState
+
+            // 只有当 impl 的状态是 idle 或 connected 时才同步
+            // 如果当前是 dialing/incoming/ending，保持本地状态（避免覆盖拨号过程）
+            if implState == .idle || implState.isInCall {
+                if self.callState != implState {
+                    self.callState = implState
+                }
             }
+            // 其他状态变化（speaker, mute, records）继续同步
             if self.isSpeakerOn != impl.isSpeakerOn {
                 self.isSpeakerOn = impl.isSpeakerOn
             }
@@ -149,9 +159,12 @@ class CallManager: ObservableObject {
             switch result {
             case .success:
                 print("[CallManager-VM] ✅ Call started successfully")
+                // 同步最终状态（拨号成功后才切换界面）
+                self.callState = impl.callState
             case .failure(let error):
                 print("[CallManager-VM] ❌ Call failed: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
+                // 失败时不改变 callState，保持在拨号键盘界面
             }
         }
     }

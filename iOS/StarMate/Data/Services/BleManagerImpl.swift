@@ -251,9 +251,35 @@ final class BleManagerImpl: NSObject, BleManagerProtocol, ObservableObject {
         processWriteQueue()
     }
 
+    // MARK: - Connection Priority
+
+    private var highPriorityMode: Bool = false
+
     func requestConnectionPriority(_ priority: Int) -> Bool {
-        // CoreBluetooth doesn't expose this API
+        // Priority: 0 = normal, 1+ = high (low latency)
+        // 注意：iOS 中心角色没有直接设置连接间隔的 API
+        // Android 有 requestConnectionPriority()，iOS 只能由系统自动协商
+        guard let peripheral = connectedPeripheral else {
+            print("[BLE] ⚠️ Cannot set priority: not connected")
+            return false
+        }
+
+        let previousMode = highPriorityMode
+        highPriorityMode = priority > 0
+
+        if highPriorityMode && !previousMode {
+            print("[BLE] ⚡ HIGH PRIORITY MODE requested (iOS will auto-negotiate)")
+            print("[BLE]    Note: iOS Central has NO API to set connection interval")
+            print("[BLE]    Using .withoutResponse writes + high-precision timer")
+        } else if !highPriorityMode && previousMode {
+            print("[BLE] ▼ NORMAL PRIORITY MODE")
+        }
+
         return true
+    }
+
+    func isInHighPriorityMode() -> Bool {
+        return highPriorityMode
     }
 
     func discoverServices() async -> Result<Void, Error> {
@@ -291,6 +317,16 @@ final class BleManagerImpl: NSObject, BleManagerProtocol, ObservableObject {
     // MARK: - Private Methods
 
     private func stopScanInternal() async {
+        centralManager?.stopScan()
+        isScanning = false
+        scanTimeoutTask?.cancel()
+        scanTimeoutTask = nil
+        scanContinuation?.finish()
+        scanContinuation = nil
+    }
+
+    /// 停止蓝牙扫描
+    func stopScan() {
         centralManager?.stopScan()
         isScanning = false
         scanTimeoutTask?.cancel()
