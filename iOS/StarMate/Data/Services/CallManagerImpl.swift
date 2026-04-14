@@ -122,6 +122,54 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
 
     // MARK: - Call Control
 
+    
+    /// 等待通话建立
+    /// 监听 URC 响应，直到通话真正建立
+    /// 期间应该能听到拨号音（如果设备支持）
+    private func waitForCallConnection(phoneNumber: String) async throws {
+        print("[CallManager] 🔄 Waiting for call connection...")
+
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 30_000_000_000) // 30秒超时
+            throw CallManagerError.callTimeout("Call establishment timeout")
+        }
+
+        // 监听 URC 流中的连接确认
+        let monitorTask = Task { [weak self] in
+            guard let self = self else { return }
+            for await notification in self.atClient.urcStream {
+                let data = notification.data.uppercased()
+
+                // 检查通话连接成功
+                if data.contains("OK") {
+                    print("[CallManager] ✅ Call connection confirmed")
+                    timeoutTask.cancel()
+                    return
+                }
+
+                // 检查通话状态变化
+                if data.contains("+CLCC:") {
+                    await self.handleCallStatusChange(notification.data)
+                }
+
+                // 检查错误情况
+                if data.contains("NO CARRIER") || data.contains("BUSY") || data.contains("ERROR") {
+                    print("[CallManager] ❌ Call failed during establishment: \(data)")
+                    timeoutTask.cancel()
+                    throw CallManagerError.callFailed("Call establishment failed: \(data)")
+                }
+
+                // 检查拨号音相关响应
+                if data.contains("RING") {
+                    print("[CallManager) 🔔 Ringing detected")
+                }
+            }
+        }
+
+        // 等待任一任务完成
+        await monitorTask.value
+    }
+
     /// 拨打电话
     func makeCall(phoneNumber: String) async -> Result<Void, Error> {
         guard callState == .idle else {
@@ -190,31 +238,33 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             callState = .dialing(phoneNumber: phoneNumber)
             print("[CallManager] 📱 State: dialing")
 
-            // 3. 确保 Voice Service 启用
+            // 3. 确保Voice Service启用（但不要重新发现服务）
             print("[CallManager] → Ensuring voice service enabled...")
-            try await ensureVoiceServiceEnabled()
+            try await ensureVoiceServiceEnabledWithoutRediscovery()
 
-            // 4. 等待服务稳定
-            try await Task.sleep(nanoseconds: 400_000_000)
-
-            // 5. 发送 ATD 命令
+            // 4. 发送 ATD 命令
             print("[CallManager] 📞 Dialing \(phoneNumber)...")
             let dialResult = await atClient.sendCommand("ATD\(phoneNumber);", timeoutMs: 30000)
 
             switch dialResult {
             case .success(let response):
                 print("[CallManager] ✅ Dial response: \(response)")
+
+                // 5. 等待通话建立（期间可以听到拨号音）
+                print("[CallManager] → Waiting for call establishment...")
+                try await waitForCallConnection(phoneNumber: phoneNumber)
+
+                // 6. 通话建立后启动音频流水线
+                print("[CallManager] → Starting audio pipeline after connection...")
+                try await startAudioPipeline()
+
             case .failure(let error):
-                // 拨号失败，不启动音频流水线
+                // 拨号失败
                 print("[CallManager] ❌ Dial failed: \(error.localizedDescription)")
                 callState = .idle
                 currentCall = nil
                 return .failure(error)
             }
-
-            // 5. 启动音频流水线（拨号成功后才启动）
-            print("[CallManager] → Starting audio pipeline...")
-            try await startAudioPipeline()
 
             // 等待一下，确保音频流水线稳定
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -266,7 +316,7 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             // 2. 等待服务稳定
             try await Task.sleep(nanoseconds: 400_000_000)
 
-            // 3. 发送 ATA 掑令
+            // 3. 发送 ATA 命令
             print("[CallManager] 📞 Answering call...")
             let answerResult = await atClient.sendCommand("ATA", timeoutMs: 30000)
 
@@ -277,7 +327,11 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
                 throw error
             }
 
-            // 4. 启动音频流水线
+            // 4. 等待通话建立
+            print("[CallManager] → Waiting for call connection after answer...")
+            try await waitForCallConnection(phoneNumber: phoneNumber)
+
+            // 5. 启动音频流水线
             try await startAudioPipeline()
 
             // 5. 更新状态为已连接
@@ -481,17 +535,8 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             // 不抛出错误，继续执行
         }
 
-        // 重新发现服务
-        print("[CallManager] → Rediscovering services...")
-        let discoverResult = await bleManager.discoverServices()
-
-        switch discoverResult {
-        case .success:
-            print("[CallManager]    ✅ Services rediscovered")
-        case .failure(let error):
-            print("[CallManager]    ❌ Service discovery failed: \(error.localizedDescription)")
-            throw error
-        }
+        // 不在拨号前重新发现服务，避免断开连接
+        print("[CallManager] → Skipping service rediscovery to maintain connection")
 
         // 检查 Voice Service 是否可用
         let voiceAvailable = bleManager.isVoiceServiceAvailable()
@@ -700,9 +745,23 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
 
     /// 处理通话状态变化
     private func handleCallStatusChange(_ data: String) async {
-        // +CLCC: 返回通话列表状态
-        // 这里可以解析通话状态变化
-        print("[CallManager] 📞 Call status changed")
+        // +CLCC: <idx>,<state>,<mode>,<format>,<number>,<type>
+        // <state>: 0 = active, 1 = held, 2 = dialing, 3 = ringing, 4 = incoming
+        print("[CallManager] 📞 Call status changed: \(data)")
+
+        // 解析 CLCC 响应
+        if let clccRange = data.range(of: "+CLCC:") {
+            let afterClcc = data[clccRange.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+            let components = afterClcc.split(separator: ",")
+
+            if components.count >= 2, let state = Int(components[1].trimmingCharacters(in: .whitespaces)) {
+                // 检查是否是已连接状态（state = 0）
+                if state == 0 {
+                    print("[CallManager] ✅ Call connected (CLCC state = 0)")
+                    // 在等待连接时，这会触发 waitForCallConnection 完成
+                }
+            }
+        }
     }
 
     /// 处理通话结束
@@ -790,6 +849,8 @@ enum CallManagerError: LocalizedError {
     case invalidPhoneNumber
     case voiceServiceFailed
     case audioFailed
+    case callTimeout(String)
+    case callFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -805,6 +866,10 @@ enum CallManagerError: LocalizedError {
             return "语音服务启动失败"
         case .audioFailed:
             return "音频初始化失败"
+        case .callTimeout(let reason):
+            return "通话超时: \(reason)"
+        case .callFailed(let reason):
+            return "通话失败: \(reason)"
         }
     }
 }
