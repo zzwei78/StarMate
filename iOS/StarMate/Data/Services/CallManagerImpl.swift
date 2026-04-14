@@ -167,7 +167,7 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
         }
 
         // 等待任一任务完成
-        await monitorTask.value
+        try? await monitorTask.value
     }
 
     /// 拨打电话
@@ -238,9 +238,9 @@ final class CallManagerImpl: CallManagerProtocol, ObservableObject {
             callState = .dialing(phoneNumber: phoneNumber)
             print("[CallManager] 📱 State: dialing")
 
-            // 3. 确保Voice Service启用（但不要重新发现服务）
+            // 3. 确保Voice Service启用
             print("[CallManager] → Ensuring voice service enabled...")
-            try await ensureVoiceServiceEnabledWithoutRediscovery()
+            try await ensureVoiceServiceEnabled()
 
             // 4. 发送 ATD 命令
             print("[CallManager] 📞 Dialing \(phoneNumber)...")
