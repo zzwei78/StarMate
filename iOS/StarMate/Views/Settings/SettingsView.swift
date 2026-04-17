@@ -94,6 +94,35 @@ struct SettingsView: View {
                     }
                 }
 
+                // 个人设置
+                SettingsSection(title: "个人设置") {
+                    NavigationLink(destination: LocationInfoView()) {
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.systemBlue)
+                                .frame(width: 32)
+                            Text("位置信息")
+                                .font(.body)
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    NavigationLink(destination: SosSettingsView()) {
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.systemOrange)
+                                .frame(width: 32)
+                            Text("SOS 设置")
+                                .font(.body)
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
                 // 通话录音
                 SettingsSection(title: "通话录音") {
                     SettingsSwitchItem(

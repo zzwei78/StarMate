@@ -5,11 +5,12 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView()
+            // SOS / Satellite Pointing
+            SatellitePointingView(showSosPanel: true)
                 .tabItem {
-                    Image(systemName: "house.fill")
+                    Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 24))
-                    Text("Home")
+                    Text("SOS")
                         .font(.system(size: 12))
                 }
                 .tag(0)
@@ -23,6 +24,15 @@ struct ContentView: View {
                 }
                 .tag(1)
 
+            HomeView()
+                .tabItem {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 24))
+                    Text("Home")
+                        .font(.system(size: 12))
+                }
+                .tag(2)
+
             SMSView()
                 .tabItem {
                     Image(systemName: "message.fill")
@@ -30,7 +40,7 @@ struct ContentView: View {
                     Text("SMS")
                         .font(.system(size: 12))
                 }
-                .tag(2)
+                .tag(3)
 
             SettingsView()
                 .tabItem {
@@ -39,7 +49,7 @@ struct ContentView: View {
                     Text("Settings")
                         .font(.system(size: 12))
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(Color.systemBlue)
     }

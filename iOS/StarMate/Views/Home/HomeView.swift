@@ -70,6 +70,19 @@ struct HomeView: View {
                             )
                         }
 
+                        // Satellite Pointing Button
+                        NavigationLink(destination: SatellitePointingView(showSosPanel: false)) {
+                            HStack(spacing: AppTheme.Spacing.sm) {
+                                Image(systemName: "satellite")
+                                Text("寻星指向")
+                                    .font(.subheadline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AppTheme.Spacing.sm)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!bleManager.connectionState.isConnected)
+
                         // Refresh Button
                         refreshButton
 

@@ -28,6 +28,12 @@
     <string>StarMate needs Bluetooth to connect to your TTCat satellite terminal for communication.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>StarMate needs microphone access for call recording functionality.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>StarMate needs your location to calculate satellite pointing direction for optimal signal alignment.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>StarMate needs your location to calculate satellite pointing direction for optimal signal alignment.</string>
+    <key>MotionUsageDescription</key>
+    <string>StarMate needs motion data to determine device orientation for satellite pointing guidance.</string>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>
@@ -40,6 +46,7 @@
         <string>bluetooth-central</string>
         <string>bluetooth-peripheral</string>
         <string>audio</string>
+        <string>location</string>
     </array>
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
@@ -47,6 +54,9 @@
     <array>
         <string>armv7</string>
         <string>bluetooth-le</string>
+        <string>gyroscope</string>
+        <string>accelerate</string>
+        <string>magnetometer</string>
     </array>
     <key>UISupportedInterfaceOrientations</key>
     <array>
