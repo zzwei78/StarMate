@@ -410,4 +410,38 @@ final class SystemServiceClientImpl: SystemServiceClientProtocol {
         return str.trimmingCharacters(in: CharacterSet(charactersIn: "\0 "))
             .isEmpty ? "N/A" : str.trimmingCharacters(in: CharacterSet(charactersIn: "\0 "))
     }
+
+    // MARK: - Voice Frame Mode
+
+    func setVoiceFrameMode(_ frames: UInt8) async -> Result<UInt8, Error> {
+        print("[SystemService] → Setting voice frame mode to \(frames) frames/packet")
+        var data = Data()
+        data.append(frames)
+        let result = await sendCommand(SystemCommands.CMD_SET_VOICE_FRAME_MODE, data: data)
+
+        switch result {
+        case .success(let responseData):
+            let currentMode = responseData.first ?? frames
+            print("[SystemService] ✅ Voice frame mode set: \(currentMode) frames/packet")
+            return .success(currentMode)
+        case .failure(let error):
+            print("[SystemService] ❌ Failed to set voice frame mode: \(error.localizedDescription)")
+            return .failure(error)
+        }
+    }
+
+    func getVoiceFrameMode() async -> Result<UInt8, Error> {
+        print("[SystemService] → Getting voice frame mode")
+        let result = await sendCommand(SystemCommands.CMD_GET_VOICE_FRAME_MODE)
+
+        switch result {
+        case .success(let responseData):
+            let mode = responseData.first ?? 0x01
+            print("[SystemService] ✅ Current voice frame mode: \(mode) frames/packet")
+            return .success(mode)
+        case .failure(let error):
+            print("[SystemService] ❌ Failed to get voice frame mode: \(error.localizedDescription)")
+            return .failure(error)
+        }
+    }
 }

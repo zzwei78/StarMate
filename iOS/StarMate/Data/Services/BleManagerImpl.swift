@@ -588,6 +588,17 @@ extension BleManagerImpl: CBPeripheralDelegate {
                 if let address = connectingAddress {
                     connectionState = .connected(deviceAddress: address, mtu: negotiatedMtu)
                     connectContinuation?.yield(.connected(deviceAddress: address, mtu: negotiatedMtu))
+
+                    // iPhone 连接后设置为 3 帧模式
+                    Task {
+                        let result = await systemServiceClient.setVoiceFrameMode(0x03)
+                        switch result {
+                        case .success(let mode):
+                            print("[BLE] ✅ Voice frame mode configured: \(mode) frames/packet")
+                        case .failure(let error):
+                            print("[BLE] ⚠️ Failed to set voice frame mode: \(error.localizedDescription)")
+                        }
+                    }
                 }
             }
         }

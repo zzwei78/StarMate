@@ -45,6 +45,12 @@ protocol SystemServiceClientProtocol: AnyObject {
     /// Reboot TT Module
     func rebootModule() async -> Result<Void, Error>
 
+    /// Set voice frame mode (0x70): 0x01=1frame/20ms, 0x03=3frames/60ms
+    func setVoiceFrameMode(_ frames: UInt8) async -> Result<UInt8, Error>
+
+    /// Get voice frame mode (0x71)
+    func getVoiceFrameMode() async -> Result<UInt8, Error>
+
     /// Called by BleManager when GATT disconnects
     func onGattClosed()
 }

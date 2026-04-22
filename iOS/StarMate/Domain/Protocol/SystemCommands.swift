@@ -39,6 +39,12 @@ enum SystemCommands {
     static let CMD_GET_TT_STATUS: UInt8 = 0x60
     /// Set TT Module power (on/off)
     static let CMD_SET_TT_POWER: UInt8 = 0x61
+
+    // ========== Voice Frame Mode ==========
+    /// Set voice frame mode: 0x01=1frame/20ms(Android), 0x03=3frames/60ms(iPhone)
+    static let CMD_SET_VOICE_FRAME_MODE: UInt8 = 0x70
+    /// Get current voice frame mode
+    static let CMD_GET_VOICE_FRAME_MODE: UInt8 = 0x71
 }
 
 // MARK: - Service IDs
