@@ -43,9 +43,6 @@
 		04C888152F849647003186B3 /* RecordingPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888132F849647003186B3 /* RecordingPreferences.swift */; };
 		04C888B42F872E69003186B3 /* SatellitePhoneManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888B32F872E69003186B3 /* SatellitePhoneManagerImpl.swift */; };
 		04C888B52F872E69003186B3 /* AudioPipelineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888B12F872E69003186B3 /* AudioPipelineManager.swift */; };
-		12F28B468880466FB511BA82 /* AudioTestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B027DDE813C8419382CB1529 /* AudioTestManager.swift */; };
-		4F7AD1ED26754C73A861C4E4 /* amr_source_file.h in Sources */ = {isa = PBXBuildFile; fileRef = BE3FBCA914C54C0BA2CE020E /* amr_source_file.h */; };
-		66F153DCCE854F479C28F53B /* amr_source_file_data.c in Sources */ = {isa = PBXBuildFile; fileRef = CADE2D1F2D6A40C19F4DFFD4 /* amr_source_file_data.c */; };
 		04C888B62F872E69003186B3 /* CallManagerImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888B22F872E69003186B3 /* CallManagerImpl.swift */; };
 		04C888BD2F872E9F003186B3 /* AudioResampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888BB2F872E9F003186B3 /* AudioResampler.swift */; };
 		04C888BE2F872E9F003186B3 /* AmrNbCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888BA2F872E9F003186B3 /* AmrNbCodec.swift */; };
@@ -53,6 +50,21 @@
 		04C888C32F873003003186B3 /* CallManagerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888C02F873003003186B3 /* CallManagerProtocol.swift */; };
 		04C888C42F873003003186B3 /* AudioPipelineProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C888BF2F873003003186B3 /* AudioPipelineProtocol.swift */; };
 		04C888D02F87319A003186B3 /* opencore-amrnb.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04C888CF2F87319A003186B3 /* opencore-amrnb.xcframework */; };
+		04D819AE2F91FAB1001EE02C /* SosPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819AD2F91FAB1001EE02C /* SosPreferences.swift */; };
+		04D819B02F91FB1E001EE02C /* SosModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819AF2F91FB1E001EE02C /* SosModels.swift */; };
+		04D819B62F91FB4D001EE02C /* AngleLowPass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819B12F91FB4D001EE02C /* AngleLowPass.swift */; };
+		04D819B72F91FB4D001EE02C /* SosPreviewTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819B42F91FB4D001EE02C /* SosPreviewTemplate.swift */; };
+		04D819B82F91FB4D001EE02C /* GuidanceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819B32F91FB4D001EE02C /* GuidanceEngine.swift */; };
+		04D819B92F91FB4D001EE02C /* GeoMathEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819B22F91FB4D001EE02C /* GeoMathEngine.swift */; };
+		04D819BB2F91FB75001EE02C /* SatellitePointingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819BA2F91FB75001EE02C /* SatellitePointingViewModel.swift */; };
+		04D819BD2F91FB7C001EE02C /* SosSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819BC2F91FB7C001EE02C /* SosSettingsViewModel.swift */; };
+		04D819C12F91FBA6001EE02C /* CompassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819BE2F91FBA6001EE02C /* CompassComponents.swift */; };
+		04D819C22F91FBA6001EE02C /* SatellitePointingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819BF2F91FBA6001EE02C /* SatellitePointingView.swift */; };
+		04D819C42F91FBC2001EE02C /* LocationInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819C32F91FBC2001EE02C /* LocationInfoView.swift */; };
+		04D819C62F91FBC8001EE02C /* SosSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D819C52F91FBC8001EE02C /* SosSettingsView.swift */; };
+		12F28B468880466FB511BA82 /* AudioTestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B027DDE813C8419382CB1529 /* AudioTestManager.swift */; };
+		4F7AD1ED26754C73A861C4E4 /* amr_source_file.h in Sources */ = {isa = PBXBuildFile; fileRef = BE3FBCA914C54C0BA2CE020E /* amr_source_file.h */; };
+		66F153DCCE854F479C28F53B /* amr_source_file_data.c in Sources */ = {isa = PBXBuildFile; fileRef = CADE2D1F2D6A40C19F4DFFD4 /* amr_source_file_data.c */; };
 		AAA0000001 /* StarMateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000002 /* StarMateApp.swift */; };
 		AAA0000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA0000004 /* ContentView.swift */; };
 /* End PBXBuildFile section */
@@ -93,7 +105,6 @@
 		04C888102F84960A003186B3 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		04C888132F849647003186B3 /* RecordingPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingPreferences.swift; sourceTree = "<group>"; };
 		04C888B12F872E69003186B3 /* AudioPipelineManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPipelineManager.swift; sourceTree = "<group>"; };
-		B027DDE813C8419382CB1529 /* AudioTestManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTestManager.swift; sourceTree = "<group>";};
 		04C888B22F872E69003186B3 /* CallManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManagerImpl.swift; sourceTree = "<group>"; };
 		04C888B32F872E69003186B3 /* SatellitePhoneManagerImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SatellitePhoneManagerImpl.swift; sourceTree = "<group>"; };
 		04C888B72F872E9F003186B3 /* interf_dec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = interf_dec.h; sourceTree = "<group>"; };
@@ -104,10 +115,23 @@
 		04C888C02F873003003186B3 /* CallManagerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallManagerProtocol.swift; sourceTree = "<group>"; };
 		04C888C12F873003003186B3 /* SatellitePhoneManagerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SatellitePhoneManagerProtocol.swift; sourceTree = "<group>"; };
 		04C888CF2F87319A003186B3 /* opencore-amrnb.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = "opencore-amrnb.xcframework"; path = "StarMate/opencore-amrnb.xcframework"; sourceTree = "<group>"; };
+		04D819AD2F91FAB1001EE02C /* SosPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SosPreferences.swift; sourceTree = "<group>"; };
+		04D819AF2F91FB1E001EE02C /* SosModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SosModels.swift; sourceTree = "<group>"; };
+		04D819B12F91FB4D001EE02C /* AngleLowPass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AngleLowPass.swift; sourceTree = "<group>"; };
+		04D819B22F91FB4D001EE02C /* GeoMathEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoMathEngine.swift; sourceTree = "<group>"; };
+		04D819B32F91FB4D001EE02C /* GuidanceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidanceEngine.swift; sourceTree = "<group>"; };
+		04D819B42F91FB4D001EE02C /* SosPreviewTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SosPreviewTemplate.swift; sourceTree = "<group>"; };
+		04D819BA2F91FB75001EE02C /* SatellitePointingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SatellitePointingViewModel.swift; sourceTree = "<group>"; };
+		04D819BC2F91FB7C001EE02C /* SosSettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SosSettingsViewModel.swift; sourceTree = "<group>"; };
+		04D819BE2F91FBA6001EE02C /* CompassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassComponents.swift; sourceTree = "<group>"; };
+		04D819BF2F91FBA6001EE02C /* SatellitePointingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SatellitePointingView.swift; sourceTree = "<group>"; };
+		04D819C32F91FBC2001EE02C /* LocationInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationInfoView.swift; sourceTree = "<group>"; };
+		04D819C52F91FBC8001EE02C /* SosSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SosSettingsView.swift; sourceTree = "<group>"; };
 		AAA0000002 /* StarMateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarMateApp.swift; sourceTree = "<group>"; };
 		AAA0000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AAA0000031 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AAA0000033 /* StarMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B027DDE813C8419382CB1529 /* AudioTestManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTestManager.swift; sourceTree = "<group>"; };
 		BE3FBCA914C54C0BA2CE020E /* amr_source_file.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = amr_source_file.h; sourceTree = "<group>"; };
 		CADE2D1F2D6A40C19F4DFFD4 /* amr_source_file_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = amr_source_file_data.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -143,6 +167,8 @@
 		0470175B2F7F6DD000F322AC /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				04D819C52F91FBC8001EE02C /* SosSettingsView.swift */,
+				04D819C32F91FBC2001EE02C /* LocationInfoView.swift */,
 				0470175A2F7F6DD000F322AC /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -168,6 +194,7 @@
 		047017612F7F6DD000F322AC /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				04D819C02F91FBA6001EE02C /* SatellitePointing */,
 				047017572F7F6DD000F322AC /* Dialer */,
 				047017592F7F6DD000F322AC /* Home */,
 				0470175B2F7F6DD000F322AC /* Settings */,
@@ -196,6 +223,7 @@
 				0470177D2F7F6E0700F322AC /* ModuleModels.swift */,
 				0470177E2F7F6E0700F322AC /* OtaModels.swift */,
 				0470177F2F7F6E0700F322AC /* SmsModels.swift */,
+				04D819AF2F91FB1E001EE02C /* SosModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -223,6 +251,7 @@
 				047017782F7F6E0700F322AC /* Clients */,
 				047017802F7F6E0700F322AC /* Models */,
 				047017872F7F6E0700F322AC /* Protocol */,
+				04D819B52F91FB4D001EE02C /* Pointing */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -276,6 +305,8 @@
 		04C888112F84960A003186B3 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				04D819BC2F91FB7C001EE02C /* SosSettingsViewModel.swift */,
+				04D819BA2F91FB75001EE02C /* SatellitePointingViewModel.swift */,
 				04C888102F84960A003186B3 /* SettingsViewModel.swift */,
 			);
 			path = ViewModels;
@@ -284,6 +315,7 @@
 		04C888142F849647003186B3 /* Preferences */ = {
 			isa = PBXGroup;
 			children = (
+				04D819AD2F91FAB1001EE02C /* SosPreferences.swift */,
 				04C888132F849647003186B3 /* RecordingPreferences.swift */,
 			);
 			path = Preferences;
@@ -314,6 +346,26 @@
 				04C888CF2F87319A003186B3 /* opencore-amrnb.xcframework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		04D819B52F91FB4D001EE02C /* Pointing */ = {
+			isa = PBXGroup;
+			children = (
+				04D819B12F91FB4D001EE02C /* AngleLowPass.swift */,
+				04D819B22F91FB4D001EE02C /* GeoMathEngine.swift */,
+				04D819B32F91FB4D001EE02C /* GuidanceEngine.swift */,
+				04D819B42F91FB4D001EE02C /* SosPreviewTemplate.swift */,
+			);
+			path = Pointing;
+			sourceTree = "<group>";
+		};
+		04D819C02F91FBA6001EE02C /* SatellitePointing */ = {
+			isa = PBXGroup;
+			children = (
+				04D819BE2F91FBA6001EE02C /* CompassComponents.swift */,
+				04D819BF2F91FBA6001EE02C /* SatellitePointingView.swift */,
+			);
+			path = SatellitePointing;
 			sourceTree = "<group>";
 		};
 		AAA0000035 = {
@@ -420,10 +472,16 @@
 			files = (
 				AAA0000001 /* StarMateApp.swift in Sources */,
 				047017552F7F6DBC00F322AC /* BluetoothService.swift in Sources */,
+				04D819BD2F91FB7C001EE02C /* SosSettingsViewModel.swift in Sources */,
 				AAA0000003 /* ContentView.swift in Sources */,
+				04D819B62F91FB4D001EE02C /* AngleLowPass.swift in Sources */,
+				04D819B72F91FB4D001EE02C /* SosPreviewTemplate.swift in Sources */,
+				04D819B82F91FB4D001EE02C /* GuidanceEngine.swift in Sources */,
+				04D819B92F91FB4D001EE02C /* GeoMathEngine.swift in Sources */,
 				047017622F7F6DD000F322AC /* DialerView.swift in Sources */,
 				047017632F7F6DD000F322AC /* HomeView.swift in Sources */,
 				047017642F7F6DD000F322AC /* SettingsView.swift in Sources */,
+				04D819AE2F91FAB1001EE02C /* SosPreferences.swift in Sources */,
 				047017652F7F6DD000F322AC /* IconGeneratorView.swift in Sources */,
 				047017662F7F6DD000F322AC /* LaunchScreenView.swift in Sources */,
 				047017892F7F6E0700F322AC /* AtModels.swift in Sources */,
@@ -431,6 +489,7 @@
 				04C888B52F872E69003186B3 /* AudioPipelineManager.swift in Sources */,
 				12F28B468880466FB511BA82 /* AudioTestManager.swift in Sources */,
 				4F7AD1ED26754C73A861C4E4 /* amr_source_file.h in Sources */,
+				04D819BB2F91FB75001EE02C /* SatellitePointingViewModel.swift in Sources */,
 				66F153DCCE854F479C28F53B /* amr_source_file_data.c in Sources */,
 				04C888B62F872E69003186B3 /* CallManagerImpl.swift in Sources */,
 				0470178A2F7F6E0700F322AC /* SystemPacketBuilder.swift in Sources */,
@@ -446,9 +505,13 @@
 				047017A92F7F6E3200F322AC /* AppTheme.swift in Sources */,
 				047017AA2F7F6E3200F322AC /* ColorScheme.swift in Sources */,
 				04C888152F849647003186B3 /* RecordingPreferences.swift in Sources */,
+				04D819C42F91FBC2001EE02C /* LocationInfoView.swift in Sources */,
+				04D819C62F91FBC8001EE02C /* SosSettingsView.swift in Sources */,
 				0470178F2F7F6E0700F322AC /* BleUuidHelper.swift in Sources */,
 				047017902F7F6E0700F322AC /* BleServiceClients.swift in Sources */,
 				047017912F7F6E0700F322AC /* OtaModels.swift in Sources */,
+				04D819C12F91FBA6001EE02C /* CompassComponents.swift in Sources */,
+				04D819C22F91FBA6001EE02C /* SatellitePointingView.swift in Sources */,
 				047017922F7F6E0700F322AC /* ModuleModels.swift in Sources */,
 				04C888122F84960A003186B3 /* SettingsViewModel.swift in Sources */,
 				047017932F7F6E0700F322AC /* ConnectModels.swift in Sources */,
@@ -463,6 +526,7 @@
 				047017BD2F7F71BE00F322AC /* OtaServiceClientImpl.swift in Sources */,
 				047017AF2F7F6E3B00F322AC /* CallManager.swift in Sources */,
 				047017962F7F6E0700F322AC /* DeviceModels.swift in Sources */,
+				04D819B02F91FB1E001EE02C /* SosModels.swift in Sources */,
 				047017972F7F6E0700F322AC /* CallModels.swift in Sources */,
 				047017672F7F6DD000F322AC /* SMSView.swift in Sources */,
 			);
@@ -616,7 +680,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.starmate.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.starmate.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -648,7 +712,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.starmate.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.starmate.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

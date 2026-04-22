@@ -32,14 +32,14 @@ struct SatelliteFinderCompass: View {
             // Draw compass dial (world-fixed, rotated by device heading)
             let deviceAz = deviceAzimuthDeg ?? 0
 
-            context.saveGState()
-            context.translateBy(x: center.x, y: center.y)
-            context.rotate(by: .degrees(-deviceAz))  // Rotate dial opposite to heading
+            // Create a transform for rotation around center
+            var transform = CGAffineTransform(translationX: center.x, y: center.y)
+            transform = transform.rotated(by: Angle.degrees(-deviceAz).radians)
 
             // Outer circle
             let outerRect = CGRect(x: -radius, y: -radius, width: radius * 2, height: radius * 2)
             context.stroke(
-                Path(ellipseIn: outerRect),
+                Path(ellipseIn: outerRect).applying(transform),
                 with: .color(.systemGray3),
                 lineWidth: 1.5
             )
@@ -64,7 +64,7 @@ struct SatelliteFinderCompass: View {
                 tickPath.addLine(to: innerPoint)
 
                 context.stroke(
-                    tickPath,
+                    tickPath.applying(transform),
                     with: .color(isMajor ? .systemGray : .systemGray4),
                     lineWidth: isMajor ? 1.5 : 0.8
                 )
@@ -86,18 +86,16 @@ struct SatelliteFinderCompass: View {
                     y: CGFloat(sin(angle)) * textRadius
                 )
 
+                let transformedCenter = textCenter.applying(transform)
                 let text = Text(label)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(color)
-                let resolvedText = context.resolve(text)
-                let textSize = resolvedText.measure(in: CGSize(width: 30, height: 20))
-                resolvedText.draw(
-                    at: CGPoint(x: textCenter.x - textSize.width / 2,
-                                y: textCenter.y - textSize.height / 2)
-                )
-            }
 
-            context.restoreGState()
+                context.draw(text, at: CGPoint(
+                    x: transformedCenter.x - 7,  // Approximate half width for 14pt font
+                    y: transformedCenter.y - 7   // Approximate half height
+                ))
+            }
 
             // Satellite marker (fixed on screen, shows satellite azimuth relative to device)
             if let satAz = satelliteAzimuthDeg {
@@ -166,12 +164,7 @@ struct SatelliteFinderCompass: View {
                 let elText = Text(String(format: "%.1f°", el))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
-                let resolvedEl = context.resolve(elText)
-                let elSize = resolvedEl.measure(in: CGSize(width: 60, height: 16))
-                resolvedEl.draw(
-                    at: CGPoint(x: center.x - elSize.width / 2,
-                                y: center.y + 16)
-                )
+                context.draw(elText, at: CGPoint(x: center.x - 15, y: center.y + 16))
             }
         }
         .frame(width: size, height: size)

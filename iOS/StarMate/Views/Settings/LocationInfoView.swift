@@ -153,6 +153,10 @@ struct LocationInfoView: View {
             satElevation = el
         }
 
+        locationDelegate.onHeadingUpdate = { heading in
+            deviceAzimuth = heading.trueHeading > 0 ? heading.trueHeading : heading.magneticHeading
+        }
+
         let status = locationManager.authorizationStatus
         if status == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
@@ -166,6 +170,16 @@ struct LocationInfoView: View {
         // Use current location if available
         if let loc = locationManager.location {
             locationDelegate.onUpdate?(loc)
+        }
+
+        // Start heading updates if available
+        if CLLocationManager.headingAvailable() {
+            locationManager.startUpdatingHeading()
+        }
+
+        // Use current heading if available
+        if let heading = locationManager.heading {
+            locationDelegate.onHeadingUpdate?(heading)
         }
     }
 
@@ -182,10 +196,17 @@ struct LocationInfoView: View {
 // MARK: - Location Delegate for LocationInfoView
 class LocationInfoDelegate: NSObject, CLLocationManagerDelegate {
     var onUpdate: ((CLLocation) -> Void)?
+    var onHeadingUpdate: ((CLHeading) -> Void)?
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         if let loc = locations.last {
             onUpdate?(loc)
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        if newHeading.headingAccuracy >= 0 {
+            onHeadingUpdate?(newHeading)
         }
     }
 
@@ -197,6 +218,9 @@ class LocationInfoDelegate: NSObject, CLLocationManagerDelegate {
         if status == .authorizedWhenInUse || status == .authorizedAlways {
             manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
             manager.startUpdatingLocation()
+            if CLLocationManager.headingAvailable() {
+                manager.startUpdatingHeading()
+            }
         }
     }
 }

@@ -42,7 +42,6 @@ struct SettingsView: View {
 
     // Dialog states
     @State private var showRebootMcuDialog = false
-    @State private var showRebootTtDialog = false
     @State private var showPowerOffTtDialog = false
     @State private var showPowerOnTtDialog = false
 
@@ -137,30 +136,20 @@ struct SettingsView: View {
 
                 // 设备管理
                 SettingsSection(title: "设备管理") {
-                    // 重启TTCat终端
+                    // 重启天通猫
                     SettingsClickItem(
-                        title: "重启TTCat终端",
-                        subtitle: "重启BLE终端设备(MCU)",
+                        title: "重启天通猫",
+                        subtitle: "重启终端设备",
                         icon: "arrow.clockwise",
                         enabled: viewModel.isConnected && !viewModel.isRebooting,
                         action: { showRebootMcuDialog = true }
-                    )
-
-                    // 重启天通模块
-                    let rebootTtDisabled = isTtRebootDisabled(viewModel.ttModuleState)
-                    SettingsClickItem(
-                        title: "重启天通模块",
-                        subtitle: "重启卫星基带模块",
-                        icon: "satellite",
-                        enabled: viewModel.isConnected && !viewModel.isRebooting && !rebootTtDisabled,
-                        action: { showRebootTtDialog = true }
                     )
 
                     // 天通模块电源控制 (动态显示)
                     if viewModel.ttModuleState?.isWorking == true {
                         SettingsClickItem(
                             title: "关闭天通模块",
-                            subtitle: "关闭卫星模块电源",
+                            subtitle: "关闭卫星模块",
                             icon: "power",
                             enabled: viewModel.isConnected && !viewModel.isRebooting,
                             action: { showPowerOffTtDialog = true }
@@ -454,15 +443,7 @@ struct SettingsView: View {
                     Task { await viewModel.rebootMcu() }
                 }
             } message: {
-                Text("确定要重启TTCat终端设备吗？\n重启后需要重新连接蓝牙。")
-            }
-            .alert("重启天通模块", isPresented: $showRebootTtDialog) {
-                Button("取消", role: .cancel) {}
-                Button("确认重启", role: .destructive) {
-                    Task { await viewModel.rebootTtModule() }
-                }
-            } message: {
-                Text("确定要重启天通基带模块吗？\n重启过程中通话和短信功能暂不可用。")
+                Text("确定要重启天通猫吗？\n重启后需要重新连接蓝牙。")
             }
             .alert("关闭天通模块", isPresented: $showPowerOffTtDialog) {
                 Button("取消", role: .cancel) {}

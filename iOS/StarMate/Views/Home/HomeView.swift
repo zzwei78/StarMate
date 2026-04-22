@@ -1,8 +1,12 @@
 import SwiftUI
 import Combine
+import CoreLocation
+import CoreMotion
 
 struct HomeView: View {
     @EnvironmentObject var bleManager: BLEManager
+    @EnvironmentObject var callManager: CallManager
+    @EnvironmentObject var smsManager: SMSManager
     @State private var showScanDialog = false
     @State private var scanTask: Task<Void, Never>?
 
@@ -13,6 +17,23 @@ struct HomeView: View {
     @State private var simState: SimState?
     @State private var networkRegStatus: NetworkRegistrationStatus?
     @State private var signalCsqRaw: Int?
+
+    // Satellite Pointing State
+    @StateObject private var pointingViewModel = SatellitePointingViewModel()
+
+    // Location & Motion State (simplified for HomeView)
+    @State private var satAzimuth: Double?
+    @State private var satElevation: Double?
+    @State private var deviceAzimuth: Double?
+    @State private var deviceElevation: Double?  // 设备当前倾斜角度
+    @State private var deltaElevation: Double?    // 设备需要扬起的角度
+    private let locationDelegate = HomeLocationDelegate()
+    private let locationManager = CLLocationManager()
+    private let motionManager = CMMotionManager()
+    private let devAzFilter = AngleLowPass(alpha: 0.15)
+    private let devElFilter = AngleLowPass(alpha: 0.20)
+    private let satAzFilter = AngleLowPass(alpha: 0.15)
+    private let satElFilter = AngleLowPass(alpha: 0.15)
 
     // Refresh State
     @State private var isRefreshing = false
@@ -29,29 +50,21 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
                     // Title
-                    VStack(spacing: AppTheme.Spacing.xs) {
-                        Text("StarMate")
-                            .font(.system(size: 34, weight: .bold))
-                            .foregroundColor(.systemBlue)
+                    Text("天通猫")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.systemBlue)
+                        .padding(.top, AppTheme.Spacing.lg)
 
-                        Text("天通卫星通信终端")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.top, AppTheme.Spacing.lg)
+                    // Link Chain Status Bar
+                    linkChainBar
 
-                    // Connection Status Card
-                    ConnectionStatusCard(
-                        connectionState: bleManager.connectionState,
-                        isScanning: bleManager.isScanning,
-                        onConnect: {
-                            showScanDialog = true
-                            startScan()
-                        },
-                        onDisconnect: { bleManager.disconnect() }
-                    )
+                    // Connect Button
+                    connectButton
 
-                    // Device Info Card (when connected)
+                    // Satellite Pointing Info (always visible)
+                    satellitePointingSection
+
+                    // Device Info Cards (only when connected)
                     if bleManager.connectionState.isConnected {
                         if let battery = batteryInfo {
                             DeviceInfoCard(
@@ -69,19 +82,6 @@ struct HomeView: View {
                                 networkRegStatus: networkRegStatus
                             )
                         }
-
-                        // Satellite Pointing Button
-                        NavigationLink(destination: SatellitePointingView(showSosPanel: false)) {
-                            HStack(spacing: AppTheme.Spacing.sm) {
-                                Image(systemName: "satellite")
-                                Text("寻星指向")
-                                    .font(.subheadline)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, AppTheme.Spacing.sm)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!bleManager.connectionState.isConnected)
 
                         // Refresh Button
                         refreshButton
@@ -133,11 +133,429 @@ struct HomeView: View {
                 scanTask = nil
                 refreshTimer?.invalidate()
                 refreshTimer = nil
+                stopLocationAndMotionUpdates()
             }
             .onChange(of: bleManager.connectionState) { _, newState in
                 handleConnectionStateChange(newState)
             }
+            .onAppear {
+                pointingViewModel.updateDependencies(
+                    bleManager: bleManager,
+                    callManager: callManager,
+                    smsManager: smsManager
+                )
+                pointingViewModel.start()
+                startLocationAndMotionUpdates()
+            }
         }
+    }
+
+    // MARK: - Connect Button
+    private var connectButton: some View {
+        Button(action: {
+            showScanDialog = true
+            startScan()
+        }) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                if bleManager.isScanning {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                    Text("正在搜索天通猫...")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                } else if case .connected = bleManager.connectionState {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.systemGreen)
+                    Text("已连接")
+                        .font(.subheadline)
+                        .foregroundColor(.systemGreen)
+                } else {
+                    Image(systemName: "magnifyingglass")
+                        .font(.subheadline)
+                    Text("搜索并连接天通猫")
+                        .font(.subheadline)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppTheme.Spacing.md)
+            .background(bleManager.connectionState.isConnected ? Color.systemGreen : Color.systemBlue)
+            .foregroundColor(.white)
+            .cornerRadius(AppTheme.CornerRadius.medium)
+        }
+        .disabled(bleManager.isScanning || bleManager.connectionState.isConnected)
+    }
+
+    // MARK: - Satellite Pointing Section
+    private var satellitePointingSection: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            // Success strip (when aligned)
+            if isPointingAligned {
+                successStrip
+            }
+
+            // Angle guidance panel
+            angleGuidancePanel
+
+            // Compass
+            SatelliteFinderCompass(
+                deviceAzimuthDeg: deviceAzimuth,
+                satelliteAzimuthDeg: satAzimuth,
+                satelliteElevationDeg: satElevation,
+                isAligned: isPointingAligned,
+                size: 240
+            )
+            .frame(maxWidth: .infinity)
+
+            // Coordinates row
+            coordinateRow
+        }
+    }
+
+    // MARK: - Pointing Computed Properties
+    private var isPointingAligned: Bool {
+        guard let satAz = satAzimuth,
+              let satEl = satElevation,
+              let devAz = deviceAzimuth,
+              let devEl = deviceElevation else { return false }
+
+        // 检查方位角是否对齐 (15度内)
+        let azDiff = abs(satAz - devAz)
+        let normalizedAzDiff = min(azDiff, 360 - azDiff)
+        let azAligned = normalizedAzDiff < 15
+
+        // 检查仰角是否对齐 (10度内)
+        let elDiff = abs(satEl - devEl)
+        let elAligned = elDiff < 10
+
+        return azAligned && elAligned
+    }
+
+    // MARK: - Link Chain Bar
+    private var linkChainBar: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            linkIcon(icon: "iphone", label: "手机", active: true)
+            linkArrow
+            linkIcon(icon: "antenna.radiowaves.left.and.right", label: "蓝牙",
+                     active: bleManager.connectionState.isConnected)
+            linkArrow
+            linkIcon(icon: "cpu", label: "模块",
+                     active: ttModuleStatus?.state == .working)
+            linkArrow
+            linkIcon(icon: "network", label: "网络",
+                     active: networkRegStatus?.isRegistered == true)
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(Color.cardBackgroundLight)
+        .cornerRadius(AppTheme.CornerRadius.medium)
+    }
+
+    private func linkIcon(icon: String, label: String, active: Bool) -> some View {
+        VStack(spacing: 2) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(active ? .systemGreen : .systemGray)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(active ? .systemGreen : .systemGray)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var linkArrow: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 10))
+            .foregroundColor(.systemGray3)
+    }
+
+    // MARK: - Success Strip
+    private var successStrip: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.systemGreen)
+            Text("已对准卫星")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.systemGreen)
+
+            if let csq = signalCsqRaw, csq != 99 {
+                Text("CSQ: \(csq)")
+                    .font(.caption)
+                    .foregroundColor(.systemGreen)
+            }
+        }
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .frame(maxWidth: .infinity)
+        .background(Color.systemGreen.opacity(0.1))
+        .cornerRadius(AppTheme.CornerRadius.medium)
+    }
+
+    // MARK: - Angle Guidance Panel
+    private var angleGuidancePanel: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            // 第一行：卫星方位 + 卫星仰角
+            HStack(spacing: AppTheme.Spacing.lg) {
+                // 卫星方位
+                HStack(spacing: 6) {
+                    Image(systemName: "satellite")
+                        .foregroundColor(.systemBlue)
+                        .font(.caption)
+                    Text("方位")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if let satAz = satAzimuth {
+                        Text(azimuthToChineseDirection(satAz))
+                            .font(.system(size: 15, weight: .medium))
+                    } else {
+                        Text("获取中...")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                // 卫星仰角
+                HStack(spacing: 6) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .foregroundColor(.systemBlue)
+                        .font(.caption)
+                    Text("卫星仰角")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if let satEl = satElevation {
+                        Text("\(String(format: "%.0f", satEl))°")
+                            .font(.system(size: 15, weight: .medium))
+                    } else {
+                        Text("--")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            Divider()
+
+            // 第二行：设备旋转 + 设备扬起
+            HStack(spacing: AppTheme.Spacing.lg) {
+                // 旋转引导
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.trianglehead.2.clockwise")
+                        .foregroundColor(.systemOrange)
+                        .font(.caption)
+                    Text("旋转")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if let satAz = satAzimuth, let devAz = deviceAzimuth {
+                        let deltaAz = satAz - devAz
+                        let normalizedDelta = (deltaAz + 540).truncatingRemainder(dividingBy: 360) - 180
+                        let isAligned = abs(normalizedDelta) < 15
+                        let arrow = normalizedDelta > 0 ? "→" : "←"
+                        Text("\(arrow) \(String(format: "%.0f", abs(normalizedDelta)))°")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(isAligned ? .systemGreen : .systemOrange)
+                    } else {
+                        Text("--")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                // 设备扬起
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up")
+                        .foregroundColor(.systemOrange)
+                        .font(.caption)
+                    Text("扬起")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if let deltaEl = deltaElevation {
+                        let isElAligned = abs(deltaEl) < 10
+                        let arrow = deltaEl > 0 ? "↑" : "↓"
+                        Text("\(arrow) \(String(format: "%.0f", abs(deltaEl)))°")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(isElAligned ? .systemGreen : .systemOrange)
+                        if isElAligned {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption2)
+                                .foregroundColor(.systemGreen)
+                        }
+                    } else {
+                        Text("--")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(Color.cardBackgroundLight)
+        .cornerRadius(AppTheme.CornerRadius.large)
+    }
+
+    // MARK: - Coordinate Row
+    private var coordinateRow: some View {
+        HStack(spacing: AppTheme.Spacing.lg) {
+            // 对齐状态
+            VStack(spacing: 2) {
+                Text("对准状态")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                if isPointingAligned {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.systemGreen)
+                            .font(.caption)
+                        Text("已对准")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.systemGreen)
+                    }
+                } else {
+                    Text("调整中")
+                        .font(.system(size: 13))
+                        .foregroundColor(.systemOrange)
+                }
+            }
+            .frame(maxWidth: .infinity)
+
+            // GPS 定位时间
+            VStack(spacing: 2) {
+                Text("定位状态")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                if let _ = satAzimuth {
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.fill")
+                            .foregroundColor(.systemGreen)
+                            .font(.caption)
+                        Text("已定位")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.systemGreen)
+                    }
+                } else {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                        Text("定位中...")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(Color.cardBackgroundLight)
+        .cornerRadius(AppTheme.CornerRadius.medium)
+    }
+
+    // MARK: - Location & Motion
+    private func startLocationAndMotionUpdates() {
+        // Set up location delegate callback (每次都设置，确保能接收到更新)
+        locationDelegate.onLocationUpdate = { location in
+            Task { @MainActor in
+                self.onLocationUpdate(location)
+            }
+        }
+
+        // 设置 delegate（只设置一次，但每次都检查）
+        if locationManager.delegate !== locationDelegate {
+            locationManager.delegate = locationDelegate
+        }
+
+        // 请求位置权限
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        locationManager.distanceFilter = 5.0
+
+        // 根据权限状态启动位置更新
+        let status = locationManager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            locationManager.startUpdatingLocation()
+            print("[HomeView] Location updates started")
+        } else if status == .notDetermined {
+            print("[HomeView] Location permission not determined, waiting for user response...")
+        } else {
+            print("[HomeView] Location permission denied or restricted: \(status.rawValue)")
+        }
+
+        // 如果当前有位置信息，立即使用
+        if let loc = locationManager.location {
+            print("[HomeView] Using existing location: \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
+            onLocationUpdate(loc)
+        } else {
+            print("[HomeView] No existing location, using test data (Beijing)...")
+            // 使用北京坐标作为测试数据
+            let testLocation = CLLocation(latitude: 39.9, longitude: 116.4)
+            onLocationUpdate(testLocation)
+        }
+
+        // Motion (compass & elevation)
+        guard motionManager.isDeviceMotionAvailable else {
+            print("[HomeView] Device motion not available")
+            return
+        }
+
+        motionManager.deviceMotionUpdateInterval = 1.0 / 30.0
+        motionManager.startDeviceMotionUpdates(using: .xTrueNorthZVertical, to: .main) { motion, _ in
+            guard let motion = motion else { return }
+
+            // 方位角
+            let heading = motion.heading
+            self.deviceAzimuth = self.devAzFilter.filterAzimuth360(heading)
+
+            // 使用和 SOS 页面相同的方法计算设备仰角
+            let rotMatrix = motion.attitude.rotationMatrix
+            let matrixArray: [Float] = [
+                Float(rotMatrix.m11), Float(rotMatrix.m12), Float(rotMatrix.m13),
+                Float(rotMatrix.m21), Float(rotMatrix.m22), Float(rotMatrix.m23),
+                Float(rotMatrix.m31), Float(rotMatrix.m32), Float(rotMatrix.m33)
+            ]
+            let deviceEl = self.devElFilter.filterLinear(
+                GuidanceEngine.deviceYElevationDegrees(rotationMatrix: matrixArray)
+            )
+
+            self.deviceElevation = deviceEl
+
+            // 计算需要扬起的角度
+            if let satEl = self.satElevation {
+                let delta = satEl - deviceEl
+                self.deltaElevation = delta
+            }
+
+            // 调试输出（每60帧输出一次，避免刷屏）
+            if Int.random(in: 1...60) == 1 {
+                print("[HomeView] Motion - Az: \(String(format: "%.1f", self.deviceAzimuth ?? 0))°, El: \(String(format: "%.1f", deviceEl))°, Delta: \(String(format: "%.1f", self.deltaElevation ?? 0))°")
+            }
+        }
+        print("[HomeView] Motion updates started")
+    }
+
+    private func stopLocationAndMotionUpdates() {
+        if motionManager.isDeviceMotionActive {
+            motionManager.stopDeviceMotionUpdates()
+        }
+    }
+
+    private func onLocationUpdate(_ location: CLLocation) {
+        let lat = location.coordinate.latitude
+        let lon = location.coordinate.longitude
+
+        let (azDeg, elDeg) = GeoMathEngine.getSatelliteAngle(
+            latDeg: lat,
+            lonDeg: lon
+        )
+
+        let filteredAz = satAzFilter.filterAzimuth360(azDeg)
+        let filteredEl = satElFilter.filterLinear(elDeg)
+
+        satAzimuth = filteredAz
+        satElevation = filteredEl
+
+        print("[HomeView] ✅ Location: \(lat), \(lon) -> Sat Az: \(filteredAz)°, El: \(filteredEl)°")
+        print("[HomeView] satAzimuth: \(String(describing: satAzimuth)), satElevation: \(String(describing: satElevation))")
     }
 
     // MARK: - Refresh Button
@@ -586,100 +1004,6 @@ struct InfoRow: View {
     }
 }
 
-// MARK: - Connection Status Card
-struct ConnectionStatusCard: View {
-    let connectionState: ConnectState
-    let isScanning: Bool
-    let onConnect: () -> Void
-    let onDisconnect: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            HStack(spacing: AppTheme.Spacing.md) {
-                Image(systemName: statusIcon)
-                    .font(.system(size: 28))
-                    .foregroundColor(statusColor)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(statusText)
-                        .font(.headline)
-
-                    if case .connected(let address, _) = connectionState {
-                        Text("TTCat \(address.suffix(8))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    if case .error(_, let message) = connectionState {
-                        Text(message)
-                            .font(.caption)
-                            .foregroundColor(.systemRed)
-                    }
-                }
-
-                Spacer()
-            }
-
-            Divider()
-
-            if isScanning {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    ProgressView()
-                    Text("正在搜索...")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-            } else if connectionState.isConnected {
-                Button(action: onDisconnect) {
-                    Text("断开连接")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-            } else if case .connecting = connectionState {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            } else {
-                Button(action: onConnect) {
-                    Label("搜索并连接 TTCat", systemImage: "magnifyingglass")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding(AppTheme.Spacing.lg)
-        .background(Color.cardBackgroundLight)
-        .cornerRadius(AppTheme.CornerRadius.large)
-    }
-
-    var statusIcon: String {
-        switch connectionState {
-        case .connected: return "antenna.radiowaves.left.and.right"
-        case .connecting: return "antenna.radiowaves.left.and.right"
-        case .error: return "antenna.radiowaves.left.and.right.slash"
-        default: return "antenna.radiowaves.left.and.right.slash"
-        }
-    }
-
-    var statusText: String {
-        switch connectionState {
-        case .connected: return "已连接"
-        case .connecting: return "正在连接..."
-        case .error: return "连接错误"
-        default: return "未连接"
-        }
-    }
-
-    var statusColor: Color {
-        switch connectionState {
-        case .connected: return .systemGreen
-        case .connecting: return .systemOrange
-        case .error: return .systemRed
-        default: return .systemGray
-        }
-    }
-}
-
 // MARK: - Scan Device Sheet
 struct ScanDeviceSheet: View {
     let isScanning: Bool
@@ -761,6 +1085,23 @@ struct DeviceScanRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, AppTheme.Spacing.xs)
+    }
+}
+
+// MARK: - Home Location Delegate
+class HomeLocationDelegate: NSObject, CLLocationManagerDelegate {
+    var onLocationUpdate: ((CLLocation) -> Void)?
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let loc = locations.last {
+            onLocationUpdate?(loc)
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.startUpdatingLocation()
+        }
     }
 }
 
